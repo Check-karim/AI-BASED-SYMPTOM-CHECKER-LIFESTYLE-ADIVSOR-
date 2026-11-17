@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "macros.html" import urgency with context %}
+{% block title %}History{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">History</p>
+  <h1>Everything saved on your account</h1>
+</header>
+<div class="two-col">
+  <section>
+    <h2>Symptom checks</h2>
+    {% if checks %}
+      <ul class="record-list">
+        {% for check in checks %}
+        <li>
+          <a href="{{ url_for('check_detail', check_id=check.id) }}">
+            {{ urgency(check.urgency) }}
+            <strong>{{ check.title }}</strong>
+            <span>{{ check.guidance.symptom_labels | join(', ') }}</span>
+            <span>{{ check.created_at | when }}</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">No symptom checks yet. <a href="{{ url_for('checker') }}">Start one</a>.</p>
+    {% endif %}
+  </section>
+  <section>
+    <h2>Lifestyle plans</h2>
+    {% if plans %}
+      <ul class="record-list">
+        {% for plan in plans %}
+        <li>
+          <a href="{{ url_for('lifestyle_detail', plan_id=plan.id) }}">
+            <strong>{{ plan.headline }}</strong>
+            <span>{{ plan.advice.goal_label }}</span>
+            <span>{{ plan.created_at | when }}</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">No plans yet. <a href="{{ url_for('lifestyle') }}">Build one</a>.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

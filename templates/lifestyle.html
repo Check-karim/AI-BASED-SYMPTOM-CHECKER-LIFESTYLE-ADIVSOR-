@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf, select_field with context %}
+{% block title %}Lifestyle advisor{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">Lifestyle advisor</p>
+  <h1>A practical week, not a personal prescription</h1>
+  <p class="lede">Answer four questions. The plan uses ordinary public-health guidance and states where a clinician should take over.</p>
+</header>
+<form class="card form-grid narrow" method="post" action="{{ url_for('lifestyle') }}">
+  {{ csrf() }}
+  {% if errors %}<p class="form-banner" role="alert">Please correct the highlighted fields.</p>{% endif %}
+  {{ select_field('goal', 'What do you want help with?', goals, form.get('goal', ''), error=errors.get('goal', '')) }}
+  {{ select_field('activity', 'How active is an ordinary week?', activities, form.get('activity', ''), error=errors.get('activity', '')) }}
+  {{ select_field('diet', 'How are you eating at the moment?', diets, form.get('diet', ''), error=errors.get('diet', '')) }}
+  {{ select_field('sleep_hours', 'How much do you usually sleep?', sleep_options, form.get('sleep_hours', ''), error=errors.get('sleep_hours', '')) }}
+  <button class="btn btn-primary" type="submit">Build my plan</button>
+</form>
+{% endblock %}

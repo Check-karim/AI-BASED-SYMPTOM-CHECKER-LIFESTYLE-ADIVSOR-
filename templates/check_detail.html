@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% from "macros.html" import urgency with context %}
+{% block title %}Guidance{% endblock %}
+{% block content %}
+<article class="result">
+  <header class="page-head">
+    <p class="kicker">Guidance · {{ check.created_at | when }}</p>
+    <div class="title-row">
+      <h1>{{ check.title }}</h1>
+      {{ urgency(check.urgency) }}
+    </div>
+    <p class="lede">{{ check.summary }}</p>
+  </header>
+  <dl class="meta-row">
+    <div><dt>Symptoms</dt><dd>{{ check.guidance.symptom_labels | join(', ') or 'None listed' }}</dd></div>
+    <div><dt>Duration</dt><dd>{{ check.guidance.duration_label }}</dd></div>
+    <div><dt>Severity</dt><dd>{{ check.guidance.severity_label }}</dd></div>
+    <div><dt>Age group</dt><dd>{{ check.guidance.age_label }}</dd></div>
+  </dl>
+  {% if g.user.role != 'patient' and check.user_id != g.user.id %}
+  <aside class="card patient-card">
+    <h2>Person who submitted this</h2>
+    <p><strong>{{ check.full_name }}</strong> · {{ check.username }}</p>
+    <p>{{ check.email }} · {{ check.phone }}</p>
+  </aside>
+  {% endif %}
+  {% if check.notes %}
+  <section class="card">
+    <h2>What you added</h2>
+    <p class="notes">{{ check.notes }}</p>
+  </section>
+  {% endif %}
+  {% if check.guidance.warnings %}
+  <section class="watch">
+    <h2>Watch for</h2>
+    <ul>
+      {% for item in check.guidance.warnings %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+  {% if check.guidance.associations %}
+  <section>
+    <h2>What this can be associated with</h2>
+    <div class="card-grid">
+      {% for item in check.guidance.associations %}
+      <article class="card">
+        <h3>{{ item.title }}</h3>
+        <p>{{ item.detail }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+  <section class="card">
+    <h2>What to do next</h2>
+    <ol class="plain-list">
+      {% for step in check.guidance.steps %}
+      <li>{{ step }}</li>
+      {% endfor %}
+    </ol>
+  </section>
+  {% if check.guidance.lifestyle %}
+  <section class="card">
+    <h2>While you wait</h2>
+    <ul class="plain-list">
+      {% for tip in check.guidance.lifestyle %}
+      <li>{{ tip }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+  <p class="disclaimer-strip">
+    <strong>Not a diagnosis.</strong>
+    <span>A clinician at King Faisal Hospital, or another clinician who can examine you, is the right person to decide on care.</span>
+  </p>
+  <div class="action-row">
+    <a class="btn btn-primary" href="{{ url_for('checker') }}">New check</a>
+    <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Back to my record</a>
+    {% if g.user.role != 'patient' %}
+      <a class="btn btn-ghost" href="{{ url_for('reviews') }}">All reviews</a>
+    {% endif %}
+  </div>
+</article>
+{% endblock %}

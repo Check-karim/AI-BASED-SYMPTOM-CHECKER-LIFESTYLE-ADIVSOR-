@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "macros.html" import urgency with context %}
+{% block title %}My record{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">My record</p>
+  <h1>Hello, {{ g.user.full_name.split()[0] }}</h1>
+  <p class="lede">Your checks and lifestyle plans stay on this account. Nothing here is a diagnosis.</p>
+</header>
+<section class="stat-grid">
+  <article class="stat"><span>Symptom checks</span><strong>{{ counts.checks }}</strong></article>
+  <article class="stat"><span>Lifestyle plans</span><strong>{{ counts.plans }}</strong></article>
+  <article class="stat"><span>Signed in as</span><strong class="stat-text">{{ g.user.username }}</strong></article>
+</section>
+<div class="action-row">
+  <a class="btn btn-primary" href="{{ url_for('checker') }}">New symptom check</a>
+  <a class="btn btn-ghost" href="{{ url_for('lifestyle') }}">New lifestyle plan</a>
+  <a class="btn btn-ghost" href="{{ url_for('history') }}">Full history</a>
+  <a class="btn btn-ghost" href="{{ url_for('profile') }}">Edit profile</a>
+</div>
+{% if g.user.role == 'professional' %}
+<section class="card staff-banner">
+  <h2>Staff review</h2>
+  <p>{{ review_count }} symptom check{{ '' if review_count == 1 else 's' }} are available to authorized reviewers.</p>
+  <a class="btn btn-primary" href="{{ url_for('reviews') }}">Open reviews</a>
+</section>
+{% endif %}
+<div class="two-col">
+  <section>
+    <h2>Recent checks</h2>
+    {% if checks %}
+      <ul class="record-list">
+        {% for check in checks %}
+        <li>
+          <a href="{{ url_for('check_detail', check_id=check.id) }}">
+            {{ urgency(check.urgency) }}
+            <strong>{{ check.title }}</strong>
+            <span>{{ check.created_at | when }}</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">No checks yet. When you run one, it will be listed here.</p>
+    {% endif %}
+  </section>
+  <section>
+    <h2>Recent plans</h2>
+    {% if plans %}
+      <ul class="record-list">
+        {% for plan in plans %}
+        <li>
+          <a href="{{ url_for('lifestyle_detail', plan_id=plan.id) }}">
+            <strong>{{ plan.headline }}</strong>
+            <span>{{ plan.created_at | when }}</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">No lifestyle plan yet.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

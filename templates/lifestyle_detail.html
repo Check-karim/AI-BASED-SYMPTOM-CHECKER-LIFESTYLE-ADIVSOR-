@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Lifestyle plan{% endblock %}
+{% block content %}
+<article class="result">
+  <header class="page-head">
+    <p class="kicker">Lifestyle plan · {{ plan.created_at | when }}</p>
+    <h1>{{ plan.headline }}</h1>
+    <p class="lede">{{ plan.advice.intro }}</p>
+  </header>
+  {% if g.user.role == 'admin' and plan.user_id != g.user.id %}
+    <p class="hint">Prepared for {{ plan.full_name }} ({{ plan.username }}).</p>
+  {% endif %}
+  <dl class="meta-row">
+    <div><dt>Focus</dt><dd>{{ plan.advice.goal_label }}</dd></div>
+    <div><dt>Activity</dt><dd>{{ plan.advice.activity_label }}</dd></div>
+    <div><dt>Eating</dt><dd>{{ plan.advice.diet_label }}</dd></div>
+    <div><dt>Sleep</dt><dd>{{ plan.advice.sleep_label }}</dd></div>
+  </dl>
+  <div class="card-grid">
+    {% for section in plan.advice.sections %}
+    <article class="card">
+      <h2>{{ section.title }}</h2>
+      <ul class="plain-list">
+        {% for item in section['items'] %}
+        <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    </article>
+    {% endfor %}
+  </div>
+  <section class="watch">
+    <h2>Keep this in view</h2>
+    <ul>
+      {% for item in plan.advice.cautions %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  <div class="action-row">
+    <a class="btn btn-primary" href="{{ url_for('lifestyle') }}">Make another plan</a>
+    <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Back to my record</a>
+  </div>
+</article>
+{% endblock %}

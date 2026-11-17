@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <p class="kicker">King Faisal Hospital Rwanda</p>
+    <h1>AI-Based Symptom Checker &amp; Lifestyle Advisor</h1>
+    <p class="lede">Describe what you feel, see a cautious next step, and pick up practical advice on food, movement, and daily habits. The hospital’s clinicians still make the care decisions.</p>
+    <div class="hero-actions">
+      {% if g.user %}
+        <a class="btn btn-primary" href="{{ url_for('checker') }}">Check symptoms</a>
+        <a class="btn btn-ghost" href="{{ url_for('lifestyle') }}">Lifestyle advice</a>
+      {% else %}
+        <a class="btn btn-primary" href="{{ url_for('register') }}">Create an account</a>
+        <a class="btn btn-ghost" href="{{ url_for('about') }}">Read the case study</a>
+      {% endif %}
+    </div>
+  </div>
+  <aside class="hero-panel" aria-label="Sample of a guidance card">
+    <p class="panel-kicker">Sample layout · not a real result</p>
+    <p class="pill pill-soon">Arrange a review</p>
+    <h2>Fever and a cough for two days</h2>
+    <p>A short viral illness can look like this. That is a possibility, not a diagnosis.</p>
+    <ul class="tick-list">
+      <li>Rest and drink fluids</li>
+      <li>Ask before using medicine</li>
+      <li>Seek care if breathing gets harder</li>
+    </ul>
+  </aside>
+</section>
+
+<section class="disclaimer-strip" role="note">
+  <strong>Not a diagnosis.</strong>
+  <span>This application sorts common symptoms with safety rules and offers general lifestyle information. It does not examine you, read scans, or replace King Faisal Hospital.</span>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <p class="kicker">What you can do</p>
+    <h2>Three parts of the same visit</h2>
+  </div>
+  <div class="card-grid">
+    <article class="card">
+      <span class="index">01</span>
+      <h3>Symptom check</h3>
+      <p>Select what you feel, how long it has lasted, and how much it is getting in the way. The result is a care level: home care, a booked review, same-day care, or emergency.</p>
+    </article>
+    <article class="card">
+      <span class="index">02</span>
+      <h3>Lifestyle advisor</h3>
+      <p>Get plain guidance on meals, walking, sleep, and everyday habits. Plans stay general. They are not a personal diet or a training prescription.</p>
+    </article>
+    <article class="card">
+      <span class="index">03</span>
+      <h3>Staff review</h3>
+      <p>Administrators manage accounts and reports. A healthcare professional authorized by the administrator can read symptom checks when follow-up is needed.</p>
+    </article>
+  </div>
+</section>
+
+<section class="section split-band">
+  <div>
+    <p class="kicker">How a check works</p>
+    <h2>Four steps, then a person if you need one</h2>
+  </div>
+  <ol class="steps">
+    <li><strong>Create an account</strong><span>Name, username, email, and phone are checked before the account is saved.</span></li>
+    <li><strong>Describe the symptoms</strong><span>Pick from a set list and add a short note if something important is missing.</span></li>
+    <li><strong>Read the guidance</strong><span>You get a care level, what the pattern can be associated with, and what to do next.</span></li>
+    <li><strong>Keep the record</strong><span>Your checks stay on your account. Authorized staff can review them.</span></li>
+  </ol>
+</section>
+
+<section class="section case-study">
+  <div>
+    <p class="kicker">The setting</p>
+    <h2>A referral hospital that already runs on shared records</h2>
+    <p>King Faisal Hospital Rwanda is a specialized referral and teaching hospital in Kigali. People come from Rwanda and from other countries in the region. The hospital uses an Integrated Health Management Information System to run daily work, keep patient information together, and coordinate departments. That system already links laboratory, radiology, medical imaging, and patient services.</p>
+    <p>This project uses the hospital as a case study for a narrower question: how a symptom checker and lifestyle advisor could sit beside those services, without pretending to be the clinical record.</p>
+    <a class="text-link" href="{{ url_for('about') }}">More about the project</a>
+  </div>
+  <dl class="fact-list">
+    <div><dt>Place</dt><dd>Kigali, Rwanda</dd></div>
+    <div><dt>Role in this project</dt><dd>Case study, not the live hospital system</dd></div>
+    <div><dt>Existing digital care</dt><dd>IHMIS across clinical departments</dd></div>
+    <div><dt>This application</dt><dd>Symptom guidance, lifestyle advice, accounts, and reports</dd></div>
+  </dl>
+</section>
+{% endblock %}

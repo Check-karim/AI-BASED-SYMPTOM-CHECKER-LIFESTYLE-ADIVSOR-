@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf, field with context %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">Profile</p>
+  <h1>{{ g.user.full_name }}</h1>
+  <p class="lede">Username <strong>{{ g.user.username }}</strong> · member since {{ g.user.created_at | when }}</p>
+</header>
+<div class="auth-layout">
+  <form class="card form-grid" method="post" action="{{ url_for('profile') }}" data-rules="profile" novalidate>
+    {{ csrf() }}
+    {% if errors %}<p class="form-banner" role="alert">Please correct the highlighted fields.</p>{% endif %}
+    {{ field('full_name', 'Full name', form.get('full_name', ''), hint='Letters and spaces only.', error=errors.get('full_name', ''), maxlength='60', autocomplete='name') }}
+    <div class="form-row">
+      {{ field('email', 'Email', form.get('email', ''), type='email', error=errors.get('email', ''), maxlength='120', autocomplete='email') }}
+      {{ field('phone', 'Phone number', form.get('phone', ''), type='tel', hint='07XXXXXXXX or an international number starting with +.', error=errors.get('phone', ''), maxlength='16', autocomplete='tel') }}
+    </div>
+    <fieldset class="password-set">
+      <legend>Change password</legend>
+      <p class="hint">Leave this blank to keep your current password. A new password must be at least 6 characters.</p>
+      {% if g.user.username == 'admin' %}
+        <p class="hint">This is the predefined administrator. Signing in with admin / admin works only until you replace that password.</p>
+      {% endif %}
+      {{ field('current_password', 'Current password', type='password', error=errors.get('current_password', ''), maxlength='128', autocomplete='current-password', required=false) }}
+      <div class="form-row">
+        {{ field('password', 'New password', type='password', error=errors.get('password', ''), minlength='6', maxlength='128', autocomplete='new-password', required=false) }}
+        {{ field('confirm_password', 'Confirm new password', type='password', minlength='6', maxlength='128', autocomplete='new-password', required=false) }}
+      </div>
+    </fieldset>
+    <button class="btn btn-primary" type="submit">Save profile</button>
+  </form>
+  <aside class="rules-card">
+    <h2>What stays fixed</h2>
+    <ul>
+      <li>Your username cannot be edited, so older records stay attached to the same person.</li>
+      <li>Email and phone must still pass the original checks, and each must belong to only one account.</li>
+      <li>Name cannot contain numbers or special characters.</li>
+    </ul>
+  </aside>
+</div>
+{% endblock %}

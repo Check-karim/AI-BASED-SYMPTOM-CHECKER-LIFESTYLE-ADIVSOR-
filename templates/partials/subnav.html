@@ -1,0 +1,8 @@
+<nav class="subnav" aria-label="Administration">
+  <a href="{{ url_for('admin_home') }}" {% if active == 'overview' %}aria-current="page"{% endif %}>Overview</a>
+  <a href="{{ url_for('admin_users') }}" {% if active == 'users' %}aria-current="page"{% endif %}>Users</a>
+  <a href="{{ url_for('admin_reports') }}" {% if active == 'reports' %}aria-current="page"{% endif %}>Reports</a>
+  <a href="{{ url_for('admin_messages') }}" {% if active == 'messages' %}aria-current="page"{% endif %}>
+    Messages{% if unread_messages %}<span class="count">{{ unread_messages }}</span>{% endif %}
+  </a>
+</nav>

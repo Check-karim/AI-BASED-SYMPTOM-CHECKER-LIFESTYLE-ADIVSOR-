@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf, field with context %}
+{% block title %}Contact{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">Contact</p>
+  <h1>Write to the project desk</h1>
+  <p class="lede">Messages are stored for the administrator of this case study. This is not the hospital switchboard. In an emergency call 912 or 112.</p>
+</header>
+<div class="auth-layout">
+  <form class="card form-grid" method="post" action="{{ url_for('contact') }}" novalidate>
+    {{ csrf() }}
+    {% if errors %}<p class="form-banner" role="alert">Please correct the highlighted fields.</p>{% endif %}
+    {{ field('full_name', 'Full name', form.get('full_name', ''), hint='Letters and spaces only.', error=errors.get('full_name', ''), maxlength='60', autocomplete='name') }}
+    <div class="form-row">
+      {{ field('email', 'Email', form.get('email', ''), type='email', hint='Use a valid email address.', error=errors.get('email', ''), maxlength='120', autocomplete='email') }}
+      {{ field('phone', 'Phone number', form.get('phone', ''), type='tel', hint='07XXXXXXXX, or an international number starting with +.', error=errors.get('phone', ''), maxlength='16', autocomplete='tel') }}
+    </div>
+    {{ field('subject', 'Subject', form.get('subject', ''), hint='Letters, numbers, and basic punctuation.', error=errors.get('subject', ''), maxlength='120') }}
+    <label class="field" for="body">
+      <span>Message</span>
+      <textarea id="body" name="body" rows="6" maxlength="1000" required {% if errors.get('body') %}aria-invalid="true"{% endif %}>{{ form.get('body', '') }}</textarea>
+      <small class="hint">At least 10 characters.</small>
+      {% if errors.get('body') %}<small class="field-error">{{ errors.get('body') }}</small>{% endif %}
+    </label>
+    <button class="btn btn-primary" type="submit">Send message</button>
+  </form>
+  <aside class="rules-card">
+    <h2>Before you write</h2>
+    <ul>
+      <li>Do not use this form for chest pain, trouble breathing, or another emergency.</li>
+      <li>The same name, email, and phone checks used at registration apply here.</li>
+      <li>An administrator marks messages as read from the desk.</li>
+    </ul>
+  </aside>
+</div>
+{% endblock %}

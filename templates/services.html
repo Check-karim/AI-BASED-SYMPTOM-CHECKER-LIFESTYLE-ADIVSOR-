@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Services{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">Services</p>
+  <h1>Guidance before the appointment, not instead of it</h1>
+  <p class="lede">Two tools for people using the case study, and a review desk for authorized staff.</p>
+</header>
+<div class="service-list">
+  <article class="service">
+    <div>
+      <p class="kicker">For you</p>
+      <h2>Symptom checker</h2>
+      <p>Choose symptoms from grouped lists, then add duration, severity, and age group. The rules look first for emergency signs: chest pain, trouble breathing, fainting, confusion, and a few phrases in your note that should never wait.</p>
+      <p>Everything else is phrased as a possibility. A cold-like pattern stays in home-care language. A child, a possible pregnancy, or a symptom that has lingered is moved toward a clinical review.</p>
+      <a class="btn btn-primary" href="{{ url_for('checker') }}">Open the checker</a>
+    </div>
+  </article>
+  <article class="service">
+    <div>
+      <p class="kicker">For daily life</p>
+      <h2>Lifestyle advisor</h2>
+      <p>Pick a focus such as energy, sleep, weight, heart health, stress, or recovery while unwell. Add how active you are, how you eat, and how much you sleep. The plan that comes back is ordinary public-health advice: meals, walking, sleep timing, and a few cautions.</p>
+      <p>It will not set a crash diet, a supplement dose, or a training load.</p>
+      <a class="btn btn-primary" href="{{ url_for('lifestyle') }}">Build a plan</a>
+    </div>
+  </article>
+  <article class="service">
+    <div>
+      <p class="kicker">For the desk</p>
+      <h2>Accounts, review, and reports</h2>
+      <p>Administrators create staff accounts, disable a user, reset a password, read contact messages, and export symptom checks. Healthcare professionals open the review list and filter by care level.</p>
+      <a class="btn btn-ghost" href="{{ url_for('login') }}">Sign in to the desk</a>
+    </div>
+  </article>
+</div>
+{% endblock %}

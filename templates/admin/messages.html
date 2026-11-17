@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf with context %}
+{% block title %}Messages{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">Administrator</p>
+  <h1>Messages</h1>
+</header>
+{% include "partials/subnav.html" %}
+{% if messages %}
+<div class="message-list">
+  {% for message in messages %}
+  <article class="card message {% if not message.is_read %}is-unread{% endif %}">
+    <header>
+      <h2>{{ message.subject }}</h2>
+      {% if not message.is_read %}<span class="pill pill-soon">Unread</span>{% endif %}
+    </header>
+    <p class="notes">{{ message.body }}</p>
+    <p class="hint">{{ message.name }} · {{ message.email }} · {{ message.phone }} · {{ message.created_at | when }}</p>
+    {% if not message.is_read %}
+    <form method="post" action="{{ url_for('admin_message_read', message_id=message.id) }}">
+      {{ csrf() }}
+      <button class="btn btn-ghost btn-small" type="submit">Mark as read</button>
+    </form>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<p class="empty">No messages yet. They arrive from the contact page.</p>
+{% endif %}
+{% endblock %}

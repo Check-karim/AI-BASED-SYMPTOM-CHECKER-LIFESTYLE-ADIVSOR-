@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b3f38">
+  <title>{% block title %}Symptom Checker{% endblock %} · KFH</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,520;9..144,640&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="{{ url_for('home') }}">
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="32" height="32">
+            <rect width="32" height="32" rx="9" fill="#0b3f38"/>
+            <path d="M16 8v16M10 14.5h12" stroke="#f4efe6" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="23" cy="22" r="2.4" fill="#e4c27a"/>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <strong>Symptom Checker</strong>
+          <small>King Faisal Hospital case study</small>
+        </span>
+      </a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+      <nav id="site-nav" class="nav-links" aria-label="Primary">
+        <a href="{{ url_for('home') }}">Home</a>
+        <a href="{{ url_for('about') }}">About</a>
+        <a href="{{ url_for('services') }}">Services</a>
+        <a href="{{ url_for('contact') }}">Contact</a>
+        {% if g.user %}
+          <a href="{{ url_for('checker') }}">Check</a>
+          <a href="{{ url_for('lifestyle') }}">Lifestyle</a>
+          {% if g.user.role == 'admin' %}
+            <a href="{{ url_for('admin_home') }}">Desk{% if unread_messages %} <span class="count">{{ unread_messages }}</span>{% endif %}</a>
+          {% elif g.user.role == 'professional' %}
+            <a href="{{ url_for('reviews') }}">Reviews</a>
+          {% endif %}
+          <a href="{{ url_for('dashboard') }}">My record</a>
+          <form method="post" action="{{ url_for('logout') }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-ghost btn-small">Sign out</button>
+          </form>
+        {% else %}
+          <a href="{{ url_for('login') }}">Sign in</a>
+          <a class="btn btn-primary btn-small" href="{{ url_for('register') }}">Create account</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+  <main id="content">
+    <div class="wrap">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-stack">
+            {% for category, message in messages %}
+              <p class="flash flash-{{ category }}" role="status">{{ message }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+  <footer class="site-footer">
+    <div class="wrap footer-grid">
+      <div>
+        <strong>AI-Based Symptom Checker &amp; Lifestyle Advisor</strong>
+        <p>A case study beside King Faisal Hospital Rwanda’s digital services. Not an official hospital system and not a diagnosis.</p>
+      </div>
+      <div>
+        <span class="footer-label">In an emergency</span>
+        <p>Call <strong>912</strong> for an ambulance or <strong>112</strong> for emergency help.</p>
+      </div>
+      <div class="footer-links">
+        <a href="{{ url_for('disclaimer') }}">Disclaimer</a>
+        <a href="{{ url_for('about') }}">About the case study</a>
+        <a href="{{ url_for('services') }}">Services</a>
+        <a href="{{ url_for('contact') }}">Contact</a>
+      </div>
+    </div>
+    <div class="wrap footer-base">
+      <span>Kigali, Rwanda · {{ current_year }}</span>
+      <span>Guidance is general information only.</span>
+    </div>
+  </footer>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

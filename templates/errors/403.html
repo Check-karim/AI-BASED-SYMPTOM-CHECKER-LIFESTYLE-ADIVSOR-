@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Not available{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">403</p>
+  <h1>This page is not on your account</h1>
+  <p class="lede">Patients see their own records. Staff review and the administrator desk are separate.</p>
+  <a class="btn btn-primary" href="{{ url_for('dashboard') if g.user else url_for('home') }}">Continue</a>
+</header>
+{% endblock %}

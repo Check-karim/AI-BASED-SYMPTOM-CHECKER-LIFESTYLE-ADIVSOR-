@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf, field with context %}
+{% block title %}Create account{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">Register</p>
+  <h1>Create a patient account</h1>
+  <p class="lede">Staff accounts are issued by the administrator. This form is for people using the checker.</p>
+</header>
+<div class="auth-layout">
+  <form class="card form-grid" method="post" action="{{ url_for('register') }}" data-rules="account" novalidate>
+    {{ csrf() }}
+    {% if errors %}<p class="form-banner" role="alert">Please correct the highlighted fields.</p>{% endif %}
+    {{ field('full_name', 'Full name', form.get('full_name', ''), hint='Letters and spaces only. No numbers or special characters.', error=errors.get('full_name', ''), maxlength='60', autocomplete='name') }}
+    {{ field('username', 'Username', form.get('username', ''), hint='Start with a letter. Letters and numbers only. No spaces.', error=errors.get('username', ''), minlength='3', maxlength='20', autocomplete='username') }}
+    <div class="form-row">
+      {{ field('email', 'Email', form.get('email', ''), type='email', hint='Must be a valid email address.', error=errors.get('email', ''), maxlength='120', autocomplete='email') }}
+      {{ field('phone', 'Phone number', form.get('phone', ''), type='tel', hint='Rwanda mobile 072, 073, 078, or 079, or + and country code.', error=errors.get('phone', ''), maxlength='16', autocomplete='tel') }}
+    </div>
+    <div class="form-row">
+      {{ field('password', 'Password', type='password', hint='At least 6 characters.', error=errors.get('password', ''), minlength='6', maxlength='128', autocomplete='new-password') }}
+      {{ field('confirm_password', 'Confirm password', type='password', minlength='6', maxlength='128', autocomplete='new-password') }}
+    </div>
+    <button class="btn btn-primary" type="submit">Create account</button>
+  </form>
+  <aside class="rules-card">
+    <h2>Account rules</h2>
+    <ul>
+      <li>Name cannot contain numbers or special characters.</li>
+      <li>Username cannot contain spaces, and it cannot start with a number or a special character.</li>
+      <li>Email must be valid. Phone must be a real pattern: 07XXXXXXXX or an international number starting with +.</li>
+      <li>Password cannot be shorter than 6 characters.</li>
+      <li>The username admin is reserved for the predefined administrator.</li>
+    </ul>
+    <p class="hint">Already registered? <a href="{{ url_for('login') }}">Sign in</a>.</p>
+  </aside>
+</div>
+{% endblock %}

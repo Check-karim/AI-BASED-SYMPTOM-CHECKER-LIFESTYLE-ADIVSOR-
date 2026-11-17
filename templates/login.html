@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf with context %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">Sign in</p>
+  <h1>Use your account</h1>
+</header>
+<div class="auth-layout">
+  <form class="card form-grid" method="post" action="{{ url_for('login') }}">
+    {{ csrf() }}
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <label class="field" for="username">
+      <span>Username</span>
+      <input id="username" name="username" value="{{ form.get('username', '') }}" autocomplete="username" required maxlength="20">
+    </label>
+    <label class="field" for="password">
+      <span>Password</span>
+      <span class="password-line">
+        <input id="password" name="password" type="password" autocomplete="current-password" required maxlength="128">
+        <button type="button" class="btn btn-ghost btn-small" data-toggle-password="password">Show</button>
+      </span>
+    </label>
+    <button class="btn btn-primary" type="submit">Sign in</button>
+    <p class="hint">No account yet? <a href="{{ url_for('register') }}">Create one</a>.</p>
+  </form>
+  <aside class="rules-card">
+    <h2>Demonstration administrator</h2>
+    <p>This case study includes one predefined desk account.</p>
+    <dl class="credential">
+      <div><dt>Username</dt><dd>admin</dd></div>
+      <div><dt>Password</dt><dd>admin</dd></div>
+    </dl>
+    <p class="hint">Passwords created or changed in the app must be at least 6 characters. The built-in account is the exception until its password is changed.</p>
+  </aside>
+</div>
+{% endblock %}

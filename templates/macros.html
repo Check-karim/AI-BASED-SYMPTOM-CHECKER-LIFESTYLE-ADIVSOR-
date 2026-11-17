@@ -1,0 +1,47 @@
+{% macro csrf() %}
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+{% endmacro %}
+
+{% macro field(name, label, value='', type='text', hint='', error='', minlength='', maxlength='', autocomplete='', required=true) %}
+<label class="field" for="{{ name }}">
+  <span>{{ label }}</span>
+  {% if type == 'password' %}
+  <span class="password-line">
+    <input id="{{ name }}" name="{{ name }}" type="password" value=""
+      {% if minlength %}minlength="{{ minlength }}"{% endif %}
+      {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}
+      {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
+      {% if required %}required{% endif %}
+      {% if error %}aria-invalid="true" aria-describedby="{{ name }}-error"{% elif hint %}aria-describedby="{{ name }}-hint"{% endif %}>
+    <button type="button" class="btn btn-ghost btn-small" data-toggle-password="{{ name }}">Show</button>
+  </span>
+  {% else %}
+  <input id="{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ value }}"
+    {% if minlength %}minlength="{{ minlength }}"{% endif %}
+    {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}
+    {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
+    {% if required %}required{% endif %}
+    {% if error %}aria-invalid="true" aria-describedby="{{ name }}-error"{% elif hint %}aria-describedby="{{ name }}-hint"{% endif %}>
+  {% endif %}
+  {% if hint %}<small class="hint" id="{{ name }}-hint">{{ hint }}</small>{% endif %}
+  {% if error %}<small class="field-error" id="{{ name }}-error">{{ error }}</small>{% endif %}
+</label>
+{% endmacro %}
+
+{% macro select_field(name, label, options, selected='', hint='', error='') %}
+<label class="field" for="{{ name }}">
+  <span>{{ label }}</span>
+  <select id="{{ name }}" name="{{ name }}" required {% if error %}aria-invalid="true"{% endif %}>
+    <option value="" disabled {% if not selected %}selected{% endif %}>Choose one</option>
+    {% for value, text in options %}
+    <option value="{{ value }}" {% if selected == value %}selected{% endif %}>{{ text }}</option>
+    {% endfor %}
+  </select>
+  {% if hint %}<small class="hint">{{ hint }}</small>{% endif %}
+  {% if error %}<small class="field-error">{{ error }}</small>{% endif %}
+</label>
+{% endmacro %}
+
+{% macro urgency(code) %}
+<span class="pill pill-{{ urgency_meta[code].tone }}">{{ urgency_meta[code].label }}</span>
+{% endmacro %}

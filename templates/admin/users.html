@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf, field with context %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">Administrator</p>
+  <h1>User information</h1>
+  <p class="lede">Create patient and professional accounts, change a role, or disable an account. The primary administrator stays active.</p>
+</header>
+{% include "partials/subnav.html" %}
+<div class="two-col">
+  <form class="card form-grid" method="post" action="{{ url_for('admin_users') }}" data-rules="account" novalidate>
+    <h2>New account</h2>
+    {{ csrf() }}
+    {% if errors %}<p class="form-banner" role="alert">Please correct the highlighted fields.</p>{% endif %}
+    {{ field('full_name', 'Full name', form.get('full_name', ''), hint='Letters and spaces only.', error=errors.get('full_name', ''), maxlength='60') }}
+    {{ field('username', 'Username', form.get('username', ''), hint='Start with a letter. No spaces or special characters.', error=errors.get('username', ''), minlength='3', maxlength='20') }}
+    {{ field('email', 'Email', form.get('email', ''), type='email', error=errors.get('email', ''), maxlength='120') }}
+    {{ field('phone', 'Phone', form.get('phone', ''), type='tel', hint='07XXXXXXXX or +country code.', error=errors.get('phone', ''), maxlength='16') }}
+    {{ field('password', 'Password', type='password', hint='At least 6 characters.', error=errors.get('password', ''), minlength='6', maxlength='128', autocomplete='new-password') }}
+    {{ field('confirm_password', 'Confirm password', type='password', minlength='6', maxlength='128', autocomplete='new-password') }}
+    <label class="field" for="role">
+      <span>Role</span>
+      <select id="role" name="role" required>
+        <option value="patient" {% if form.get('role', 'patient') == 'patient' %}selected{% endif %}>Patient</option>
+        <option value="professional" {% if form.get('role') == 'professional' %}selected{% endif %}>Healthcare professional</option>
+      </select>
+      {% if errors.get('role') %}<small class="field-error">{{ errors.get('role') }}</small>{% endif %}
+    </label>
+    <button class="btn btn-primary" type="submit">Create account</button>
+  </form>
+  <aside class="rules-card">
+    <h2>Rules on this desk</h2>
+    <ul>
+      <li>Username cannot contain spaces and cannot start with a number or special character.</li>
+      <li>Name cannot contain numbers or special characters.</li>
+      <li>Email and phone are checked, and each can belong to only one account.</li>
+      <li>Every password you set here must be at least 6 characters.</li>
+      <li>The built-in account remains username admin and password admin until you change that password.</li>
+    </ul>
+  </aside>
+</div>
+<form class="search-row" method="get" action="{{ url_for('admin_users') }}">
+  <label class="field grow" for="q">
+    <span>Find an account</span>
+    <input id="q" name="q" value="{{ query }}" maxlength="50" placeholder="Name, username, or email">
+  </label>
+  <button class="btn btn-ghost" type="submit">Search</button>
+</form>
+<div class="table-wrap card">
+  <table>
+    <thead>
+      <tr>
+        <th>Person</th>
+        <th>Contact</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Password</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr>
+        <td>
+          <strong>{{ user.full_name }}</strong><br>
+          <span class="hint">{{ user.username }} · {{ user.created_at | when }}</span>
+        </td>
+        <td>{{ user.email }}<br><span class="hint">{{ user.phone }}</span></td>
+        <td>
+          {% if user.username == 'admin' %}
+            <span class="pill pill-self">Administrator</span>
+          {% else %}
+          <form method="post" action="{{ url_for('admin_set_role', user_id=user.id) }}" class="stack-form">
+            {{ csrf() }}
+            <select name="role" aria-label="Role for {{ user.username }}">
+              <option value="patient" {% if user.role == 'patient' %}selected{% endif %}>Patient</option>
+              <option value="professional" {% if user.role == 'professional' %}selected{% endif %}>Professional</option>
+            </select>
+            <button class="btn btn-ghost btn-small" type="submit">Save role</button>
+          </form>
+          {% endif %}
+        </td>
+        <td>
+          {% if user.username == 'admin' %}
+            <span class="pill pill-self">Active</span>
+          {% else %}
+          <form method="post" action="{{ url_for('admin_set_status', user_id=user.id) }}">
+            {{ csrf() }}
+            <button class="btn btn-ghost btn-small" type="submit">
+              {{ 'Disable' if user.is_active else 'Enable' }}
+            </button>
+          </form>
+          <span class="hint">{{ 'Active' if user.is_active else 'Disabled' }}</span>
+          {% endif %}
+        </td>
+        <td>
+          <details>
+            <summary>Reset</summary>
+            <form method="post" action="{{ url_for('admin_reset_password', user_id=user.id) }}" class="stack-form">
+              {{ csrf() }}
+              <input type="password" name="password" minlength="6" maxlength="128" required placeholder="New password" aria-label="New password for {{ user.username }}">
+              <input type="password" name="confirm_password" minlength="6" maxlength="128" required placeholder="Confirm" aria-label="Confirm password for {{ user.username }}">
+              <button class="btn btn-primary btn-small" type="submit">Update</button>
+            </form>
+          </details>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

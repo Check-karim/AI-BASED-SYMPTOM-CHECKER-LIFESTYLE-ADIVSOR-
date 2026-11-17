@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "macros.html" import urgency with context %}
+{% block title %}Administrator{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">Administrator</p>
+  <h1>Desk</h1>
+  <p class="lede">You are signed in as the predefined administrator. Patient passwords set from this desk must be at least 6 characters.</p>
+</header>
+{% include "partials/subnav.html" %}
+<section class="stat-grid">
+  <article class="stat"><span>People</span><strong>{{ totals.users }}</strong></article>
+  <article class="stat"><span>Patients</span><strong>{{ totals.patients }}</strong></article>
+  <article class="stat"><span>Professionals</span><strong>{{ totals.professionals }}</strong></article>
+  <article class="stat"><span>Symptom checks</span><strong>{{ totals.checks }}</strong></article>
+  <article class="stat"><span>Lifestyle plans</span><strong>{{ totals.plans }}</strong></article>
+  <article class="stat"><span>Messages</span><strong>{{ totals.messages }}</strong></article>
+</section>
+<div class="two-col">
+  <section class="card">
+    <h2>Checks by care level</h2>
+    {% for row in urgency_stats %}
+    <div class="bar-row">
+      <span>{{ row.label }}</span>
+      <div class="bar bar-{{ row.tone }}"><span style="width: {{ row.pct }}%"></span></div>
+      <strong>{{ row.count }}</strong>
+    </div>
+    {% endfor %}
+  </section>
+  <section class="card">
+    <h2>Checks in the last 7 days</h2>
+    {% for row in daily %}
+    <div class="bar-row">
+      <span>{{ row.label }}</span>
+      <div class="bar"><span style="width: {{ row.pct }}%"></span></div>
+      <strong>{{ row.count }}</strong>
+    </div>
+    {% endfor %}
+  </section>
+</div>
+<div class="two-col">
+  <section>
+    <h2>Newest accounts</h2>
+    <ul class="record-list">
+      {% for user in newest_users %}
+      <li>
+        <div>
+          <strong>{{ user.full_name }}</strong>
+          <span>{{ user.username }} · {{ user.role }}</span>
+          <span>{{ user.created_at | when }}</span>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  <section>
+    <h2>Latest checks</h2>
+    {% if recent %}
+    <ul class="record-list">
+      {% for check in recent %}
+      <li>
+        <a href="{{ url_for('check_detail', check_id=check.id) }}">
+          {{ urgency(check.urgency) }}
+          <strong>{{ check.full_name }}</strong>
+          <span>{{ check.title }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">No symptom checks have been saved yet.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf, select_field with context %}
+{% block title %}Symptom check{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">Symptom checker</p>
+  <h1>Tell us what you are feeling</h1>
+  <p class="lede">Select every symptom that applies today. The result is general guidance from safety rules, not a diagnosis and not a look at your hospital record.</p>
+</header>
+<form class="checker-form" method="post" action="{{ url_for('checker') }}" data-rules="symptoms">
+  {{ csrf() }}
+  {% if errors %}<p class="form-banner" role="alert">Please correct the highlighted fields.</p>{% endif %}
+  <fieldset class="symptom-board">
+    <legend>Symptoms</legend>
+    {% if errors.get('symptoms') %}<p class="field-error" id="symptoms-error">{{ errors.get('symptoms') }}</p>{% else %}<p class="field-error" id="symptoms-error"></p>{% endif %}
+    {% for group in groups %}
+      <section class="symptom-group">
+        <h2>{{ group.name }}</h2>
+        <div class="chips">
+          {% for item in group['items'] %}
+          <label class="chip">
+            <input type="checkbox" name="symptoms" value="{{ item.id }}" {% if item.id in selected %}checked{% endif %}>
+            <span>{{ item.label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+  </fieldset>
+  <div class="card form-grid">
+    <div class="form-row">
+      {{ select_field('duration', 'How long has this been going on?', durations, form.get('duration', ''), error=errors.get('duration', '')) }}
+      {{ select_field('severity', 'How much is it affecting you?', severities, form.get('severity', ''), error=errors.get('severity', '')) }}
+    </div>
+    <div class="form-row">
+      {{ select_field('age_group', 'Age group', age_groups, form.get('age_group', ''), error=errors.get('age_group', '')) }}
+      <div id="pregnancy-field">
+        {{ select_field('pregnancy', 'Pregnant, or might be?', pregnancy_options, form.get('pregnancy', 'no'), hint='Used only to avoid casual medicine advice.', error=errors.get('pregnancy', '')) }}
+      </div>
+    </div>
+    <label class="field" for="notes">
+      <span>Anything else we should know?</span>
+      <textarea id="notes" name="notes" rows="4" maxlength="500" placeholder="Optional. For example, a symptom that is not in the list.">{{ form.get('notes', '') }}</textarea>
+      <small class="hint">Up to 500 characters. Leave this blank if the list already covers it.</small>
+      {% if errors.get('notes') %}<small class="field-error">{{ errors.get('notes') }}</small>{% endif %}
+    </label>
+    <label class="checkline">
+      <input type="checkbox" name="acknowledge" value="yes" {% if form.get('acknowledge') == 'yes' %}checked{% endif %} required>
+      <span>I understand this is not a diagnosis and not a substitute for a clinician. In an emergency I will call 912 or 112.</span>
+    </label>
+    {% if errors.get('acknowledge') %}<p class="field-error">{{ errors.get('acknowledge') }}</p>{% endif %}
+    <button class="btn btn-primary" type="submit">Get guidance</button>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+  const age = document.querySelector('#age_group');
+  const pregnancy = document.querySelector('#pregnancy-field');
+  function syncPregnancy() {
+    if (!age || !pregnancy) return;
+    const hide = age.value === 'under_12';
+    pregnancy.hidden = hide;
+    const select = pregnancy.querySelector('select');
+    if (select) select.required = !hide;
+  }
+  if (age) {
+    age.addEventListener('change', syncPregnancy);
+    syncPregnancy();
+  }
+</script>
+{% endblock %}

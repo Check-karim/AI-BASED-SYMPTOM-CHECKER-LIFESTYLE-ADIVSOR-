@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Something went wrong{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">500</p>
+  <h1>The page could not be completed</h1>
+  <p class="lede">Try again in a moment. If this keeps happening, check that MySQL is running.</p>
+  <a class="btn btn-primary" href="{{ url_for('home') }}">Home</a>
+</header>
+{% endblock %}
