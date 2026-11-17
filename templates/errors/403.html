@@ -4,7 +4,7 @@
 <header class="page-head">
   <p class="kicker">403</p>
   <h1>This page is not on your account</h1>
-  <p class="lede">Patients see their own records. Staff review and the administrator desk are separate.</p>
-  <a class="btn btn-primary" href="{{ url_for('dashboard') if g.user else url_for('home') }}">Continue</a>
+  <p class="lede">Each account stays inside its own work: a patient record, a professional review, or the administrator desk.</p>
+  <a class="btn btn-primary" href="{{ account_home }}">Continue</a>
 </header>
 {% endblock %}

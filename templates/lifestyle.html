@@ -5,7 +5,13 @@
 <header class="page-head">
   <p class="kicker">Lifestyle advisor</p>
   <h1>A practical week, not a personal prescription</h1>
-  <p class="lede">Answer four questions. The plan uses ordinary public-health guidance and states where a clinician should take over.</p>
+  {% if intro %}
+    {% for paragraph in intro.body.split('\n\n') %}
+      {% if paragraph.strip() %}<p class="lede preserve">{{ paragraph.strip() }}</p>{% endif %}
+    {% endfor %}
+  {% else %}
+    <p class="lede">Answer four questions. The plan uses ordinary public-health guidance and states where a clinician should take over.</p>
+  {% endif %}
 </header>
 <form class="card form-grid narrow" method="post" action="{{ url_for('lifestyle') }}">
   {{ csrf() }}
@@ -16,4 +22,22 @@
   {{ select_field('sleep_hours', 'How much do you usually sleep?', sleep_options, form.get('sleep_hours', ''), error=errors.get('sleep_hours', '')) }}
   <button class="btn btn-primary" type="submit">Build my plan</button>
 </form>
+<section>
+  <h2>Your recommendations</h2>
+  {% if plans %}
+  <ul class="record-list">
+    {% for plan in plans %}
+    <li>
+      <a href="{{ url_for('lifestyle_detail', plan_id=plan.id) }}">
+        <strong>{{ plan.headline }}</strong>
+        <span>{{ plan.advice.goal_label }}</span>
+        <span>{{ plan.created_at | when }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">No lifestyle recommendation yet.</p>
+  {% endif %}
+</section>
 {% endblock %}

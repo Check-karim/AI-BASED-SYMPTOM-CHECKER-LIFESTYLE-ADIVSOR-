@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf with context %}
+{% block title %}Roles{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">Administrator</p>
+  <h1>Roles and access</h1>
+  <p class="lede">A patient uses the checker. A healthcare professional reviews only checks that patient sent. The primary administrator keeps this desk.</p>
+</header>
+{% include "partials/subnav.html" %}
+<form class="search-row" method="get" action="{{ url_for('admin_roles') }}">
+  <label class="field grow" for="q">
+    <span>Find an account</span>
+    <input id="q" name="q" value="{{ query }}" maxlength="50" placeholder="Name, username, or email">
+  </label>
+  <button class="btn btn-ghost" type="submit">Search</button>
+</form>
+<div class="table-wrap card">
+  <table>
+    <thead>
+      <tr>
+        <th>Person</th>
+        <th>Current role</th>
+        <th>Access</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr>
+        <td>
+          <strong>{{ user.full_name }}</strong><br>
+          <span class="hint">{{ user.username }}</span>
+        </td>
+        <td>{{ role_labels.get(user.role, user.role) }}</td>
+        <td>
+          {% if user.username == 'admin' %}
+            <span class="pill pill-self">Fixed administrator</span>
+          {% else %}
+          <form method="post" action="{{ url_for('admin_set_role', user_id=user.id) }}" class="stack-form">
+            {{ csrf() }}
+            <select name="role" aria-label="Role for {{ user.username }}">
+              <option value="patient" {% if user.role == 'patient' %}selected{% endif %}>Patient</option>
+              <option value="professional" {% if user.role == 'professional' %}selected{% endif %}>Healthcare professional</option>
+            </select>
+            <button class="btn btn-ghost btn-small" type="submit">Save role</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -39,12 +39,12 @@ from engines import (
 )
 from validators import (
     account_errors,
+    validate_bounded_text,
     validate_email,
+    validate_emergency_number,
     validate_full_name,
-    validate_message_body,
     validate_new_password,
     validate_phone,
-    validate_subject,
 )
 
 app = Flask(__name__)
@@ -60,10 +60,53 @@ def safe_next(value):
     return value
 
 
+ROLE_LABELS = {
+    "patient": "Patient",
+    "professional": "Healthcare professional",
+    "admin": "Administrator",
+}
+
+CONTENT_SLUGS = ("safety_notice", "disclaimer", "symptom_intro", "lifestyle_intro")
+
+SETTING_DEFAULTS = {
+    "registration_open": "1",
+    "reviews_open": "1",
+    "emergency_ambulance": "912",
+    "emergency_general": "112",
+}
+
+
 def landing_for(user):
     if user["role"] == "admin":
         return url_for("admin_home")
+    if user["role"] == "professional":
+        return url_for("reviews")
     return url_for("dashboard")
+
+
+def path_allowed(role, path):
+    base = (path or "").split("?", 1)[0].rstrip("/") or "/"
+    if role == "admin":
+        return base == "/admin" or base.startswith("/admin/")
+    if role == "professional":
+        return base == "/reviews" or base.startswith("/reviews/")
+    if role == "patient":
+        return base in {
+            "/dashboard",
+            "/profile",
+            "/checker",
+            "/lifestyle",
+            "/history",
+            "/disclaimer",
+        } or base.startswith("/checks/") or base.startswith("/lifestyle/")
+    return False
+
+
+def destination_for(user, next_url):
+    path = safe_next(next_url)
+    if path and path_allowed(user["role"], path):
+        return path
+    return landing_for(user)
 
 
 def login_required(view):
@@ -104,6 +147,7 @@ def prepare_request():
         expected = session.get("csrf", "")
         if not provided or not expected or not secrets.compare_digest(provided, expected):
             abort(400)
+    g.settings = dict(SETTING_DEFAULTS)
     try:
         user_id = session.get("user_id")
         if user_id:
@@ -120,26 +164,38 @@ def prepare_request():
                 session.pop("user_id", None)
                 if user and not user["is_active"]:
                     flash("This account has been disabled. Contact an administrator.", "error")
+        g.settings = load_settings()
     except pymysql.MySQLError:
         return render_template("errors/db.html"), 503
     return None
 
 
+def load_settings():
+    found = dict(SETTING_DEFAULTS)
+    for row in fetch_all("SELECT setting_key, setting_value FROM app_settings"):
+        if row["setting_key"] in found:
+            found[row["setting_key"]] = row["setting_value"]
+    return found
+
+
+def setting_on(key):
+    return (getattr(g, "settings", {}) or {}).get(key) == "1"
+
+
 @app.context_processor
 def inject_globals():
-    unread = 0
+    settings = getattr(g, "settings", None) or SETTING_DEFAULTS
     user = getattr(g, "user", None)
-    if user and user["role"] == "admin":
-        try:
-            row = fetch_one("SELECT COUNT(*) AS total FROM messages WHERE is_read = 0")
-            unread = int(row["total"]) if row else 0
-        except pymysql.MySQLError:
-            unread = 0
     return {
         "csrf_token": getattr(g, "csrf", ""),
-        "unread_messages": unread,
         "urgency_meta": URGENCY_META,
         "current_year": datetime.now().year,
+        "role_labels": ROLE_LABELS,
+        "emergency_ambulance": settings.get("emergency_ambulance", "912"),
+        "emergency_general": settings.get("emergency_general", "112"),
+        "registration_open": settings.get("registration_open") == "1",
+        "reviews_open": settings.get("reviews_open") == "1",
+        "account_home": landing_for(user) if user else url_for("home"),
     }
 
 
@@ -189,70 +245,76 @@ def choice_error(value, options, message):
     return ""
 
 
+def audit(action, detail="", user=None):
+    actor = user or getattr(g, "user", None)
+    execute(
+        """
+        INSERT INTO audit_logs (user_id, role, action, detail)
+        VALUES (%s, %s, %s, %s)
+        """,
+        (
+            actor["id"] if actor else None,
+            (actor["role"] if actor else "guest")[:20],
+            action[:80],
+            (detail or "")[:500],
+        ),
+    )
+
+
+def content_block(slug):
+    return fetch_one(
+        "SELECT slug, title, body, updated_at FROM content_blocks WHERE slug = %s",
+        (slug,),
+    )
+
+
+def list_accounts(query):
+    query = (query or "").strip()[:50]
+    columns = """
+        SELECT id, full_name, username, email, phone, role, is_active, created_at
+        FROM users
+    """
+    if not query:
+        return fetch_all(columns + " ORDER BY created_at DESC"), query
+    escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    like = f"%{escaped}%"
+    return (
+        fetch_all(
+            columns
+            + """
+            WHERE username LIKE %s ESCAPE '\\\\'
+               OR full_name LIKE %s ESCAPE '\\\\'
+               OR email LIKE %s ESCAPE '\\\\'
+            ORDER BY created_at DESC
+            """,
+            (like, like, like),
+        ),
+        query,
+    )
+
+
 @app.route("/")
 def home():
     return render_template("home.html")
 
 
-@app.route("/about")
-def about():
-    return render_template("about.html")
-
-
-@app.route("/services")
-def services():
-    return render_template("services.html")
-
-
 @app.route("/disclaimer")
 def disclaimer():
-    return render_template("disclaimer.html")
-
-
-@app.route("/contact", methods=["GET", "POST"])
-def contact():
-    form = request.form if request.method == "POST" else {}
-    if request.method == "GET" and g.user:
-        form = {
-            "full_name": g.user["full_name"],
-            "email": g.user["email"],
-            "phone": g.user["phone"],
-        }
-    errors = {}
-    if request.method == "POST":
-        errors_name, name = validate_full_name(form.get("full_name", ""))
-        errors_email, email = validate_email(form.get("email", ""))
-        errors_phone, phone = validate_phone(form.get("phone", ""))
-        errors_subject, subject = validate_subject(form.get("subject", ""))
-        errors_body, body = validate_message_body(form.get("body", ""))
-        errors = {
-            key: value
-            for key, value in {
-                "full_name": errors_name,
-                "email": errors_email,
-                "phone": errors_phone,
-                "subject": errors_subject,
-                "body": errors_body,
-            }.items()
-            if value
-        }
-        if not errors:
-            execute(
-                """
-                INSERT INTO messages (name, email, phone, subject, body)
-                VALUES (%s, %s, %s, %s, %s)
-                """,
-                (name, email, phone, subject, body),
-            )
-            flash("Message sent. An administrator can read it from the desk.", "success")
-            return redirect(url_for("contact"))
-    return render_template("contact.html", errors=errors, form=form)
+    return render_template(
+        "disclaimer.html",
+        notice=content_block("safety_notice"),
+        legal=content_block("disclaimer"),
+    )
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if g.user:
         return redirect(landing_for(g.user))
+    if not setting_on("registration_open"):
+        if request.method == "POST":
+            flash("Registration is closed.", "error")
+        return render_template("register.html", errors={}, form={}, closed=True)
     errors = {}
     form = request.form if request.method == "POST" else {}
     if request.method == "POST":
@@ -286,9 +348,10 @@ def register():
                 (user_id,),
             )
             start_session(user)
+            audit("register", user["username"], user)
             flash("Account created. You are signed in.", "success")
             return redirect(url_for("dashboard"))
-    return render_template("register.html", errors=errors, form=form)
+    return render_template("register.html", errors=errors, form=form, closed=False)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -307,20 +370,23 @@ def login():
             flash("This account is disabled. Contact an administrator.", "error")
         else:
             start_session(user)
+            audit("login", user["username"], user)
             flash("Welcome back.", "success")
-            return redirect(next_url or landing_for(user))
+            return redirect(destination_for(user, next_url))
     return render_template("login.html", form=form, next_url=next_url or "")
 
 
 @app.route("/logout", methods=["POST"])
 def logout():
+    if g.user:
+        audit("logout", g.user["username"])
     session.clear()
     flash("You have signed out.", "info")
     return redirect(url_for("home"))
 
 
 @app.route("/dashboard")
-@login_required
+@roles_required("patient")
 def dashboard():
     checks = [
         hydrate_check(row)
@@ -360,20 +426,16 @@ def dashboard():
             )["total"]
         ),
     }
-    review_count = 0
-    if g.user["role"] == "professional":
-        review_count = int(fetch_one("SELECT COUNT(*) AS total FROM symptom_checks")["total"])
     return render_template(
         "dashboard.html",
         checks=checks,
         plans=plans,
         counts=counts,
-        review_count=review_count,
     )
 
 
 @app.route("/history")
-@login_required
+@roles_required("patient")
 def history():
     checks = [
         hydrate_check(row)
@@ -382,18 +444,11 @@ def history():
             (g.user["id"],),
         )
     ]
-    plans = [
-        hydrate_plan(row)
-        for row in fetch_all(
-            "SELECT * FROM lifestyle_plans WHERE user_id = %s ORDER BY created_at DESC",
-            (g.user["id"],),
-        )
-    ]
-    return render_template("history.html", checks=checks, plans=plans)
+    return render_template("history.html", checks=checks)
 
 
 @app.route("/profile", methods=["GET", "POST"])
-@login_required
+@roles_required("patient")
 def profile():
     errors = {}
     form = {
@@ -448,13 +503,14 @@ def profile():
                     "UPDATE users SET full_name = %s, email = %s, phone = %s WHERE id = %s",
                     (name, email, phone, g.user["id"]),
                 )
+            audit("profile_update", g.user["username"])
             flash("Profile updated.", "success")
             return redirect(url_for("profile"))
     return render_template("profile.html", errors=errors, form=form)
 
 
 @app.route("/checker", methods=["GET", "POST"])
-@login_required
+@roles_required("patient")
 def checker():
     errors = {}
     form = request.form if request.method == "POST" else {}
@@ -492,6 +548,8 @@ def checker():
                 form.get("age_group"),
                 pregnancy,
                 notes,
+                ambulance=g.settings.get("emergency_ambulance", "912"),
+                general=g.settings.get("emergency_general", "112"),
             )
             check_id = execute(
                 """
@@ -514,6 +572,7 @@ def checker():
                     json.dumps(result["guidance"]),
                 ),
             )
+            audit("symptom_check", f"check {check_id} {result['urgency']}")
             return redirect(url_for("check_detail", check_id=check_id))
     return render_template(
         "checker.html",
@@ -525,32 +584,72 @@ def checker():
         severities=SEVERITIES,
         age_groups=AGE_GROUPS,
         pregnancy_options=PREGNANCY,
+        intro=content_block("symptom_intro"),
     )
 
 
-@app.route("/checks/<int:check_id>")
-@login_required
-def check_detail(check_id):
+def patient_check(check_id):
     row = hydrate_check(
         fetch_one(
-            """
-            SELECT c.*, u.full_name, u.username, u.email, u.phone
-            FROM symptom_checks c
-            JOIN users u ON u.id = c.user_id
-            WHERE c.id = %s
-            """,
+            "SELECT * FROM symptom_checks WHERE id = %s",
             (check_id,),
         )
     )
     if row is None:
         abort(404)
-    if g.user["role"] == "patient" and row["user_id"] != g.user["id"]:
+    if row["user_id"] != g.user["id"]:
         abort(403)
-    return render_template("check_detail.html", check=row)
+    return row
+
+
+def review_for_check(check_id):
+    return fetch_one(
+        """
+        SELECT r.notes, r.recommendation, r.updated_at, u.full_name AS professional_name
+        FROM professional_reviews r
+        JOIN users u ON u.id = r.professional_id
+        WHERE r.check_id = %s
+        """,
+        (check_id,),
+    )
+
+
+@app.route("/checks/<int:check_id>")
+@roles_required("patient")
+def check_detail(check_id):
+    row = patient_check(check_id)
+    return render_template(
+        "check_detail.html",
+        check=row,
+        review=review_for_check(check_id),
+    )
+
+
+@app.route("/checks/<int:check_id>/review-request", methods=["POST"])
+@roles_required("patient")
+def request_review(check_id):
+    row = patient_check(check_id)
+    if not setting_on("reviews_open"):
+        flash("Professional review is turned off.", "error")
+        return redirect(url_for("check_detail", check_id=check_id))
+    if row["review_requested"]:
+        flash("You already asked for a review of this check.", "info")
+        return redirect(url_for("check_detail", check_id=check_id))
+    execute(
+        """
+        UPDATE symptom_checks
+        SET review_requested = 1, review_requested_at = CURRENT_TIMESTAMP
+        WHERE id = %s AND user_id = %s
+        """,
+        (check_id, g.user["id"]),
+    )
+    audit("review_requested", f"check {check_id}")
+    flash("You asked for a professional review. Only this check will be shared.", "success")
+    return redirect(url_for("check_detail", check_id=check_id))
 
 
 @app.route("/lifestyle", methods=["GET", "POST"])
-@login_required
+@roles_required("patient")
 def lifestyle():
     errors = {}
     form = request.form if request.method == "POST" else {}
@@ -587,7 +686,15 @@ def lifestyle():
                     json.dumps(advice),
                 ),
             )
+            audit("lifestyle_plan", f"plan {plan_id}")
             return redirect(url_for("lifestyle_detail", plan_id=plan_id))
+    plans = [
+        hydrate_plan(row)
+        for row in fetch_all(
+            "SELECT * FROM lifestyle_plans WHERE user_id = %s ORDER BY created_at DESC",
+            (g.user["id"],),
+        )
+    ]
     return render_template(
         "lifestyle.html",
         errors=errors,
@@ -596,48 +703,164 @@ def lifestyle():
         activities=ACTIVITIES,
         diets=DIETS,
         sleep_options=SLEEP,
+        plans=plans,
+        intro=content_block("lifestyle_intro"),
     )
 
 
 @app.route("/lifestyle/<int:plan_id>")
-@login_required
+@roles_required("patient")
 def lifestyle_detail(plan_id):
     row = hydrate_plan(
         fetch_one(
-            """
-            SELECT p.*, u.full_name, u.username
-            FROM lifestyle_plans p
-            JOIN users u ON u.id = p.user_id
-            WHERE p.id = %s
-            """,
-            (plan_id,),
+            "SELECT * FROM lifestyle_plans WHERE id = %s AND user_id = %s",
+            (plan_id, g.user["id"]),
         )
     )
     if row is None:
         abort(404)
-    if g.user["role"] != "admin" and row["user_id"] != g.user["id"]:
-        abort(403)
     return render_template("lifestyle_detail.html", plan=row)
 
 
+def visible_submission(check_id):
+    row = hydrate_check(
+        fetch_one(
+            """
+            SELECT c.*, u.full_name, u.username
+            FROM symptom_checks c
+            JOIN users u ON u.id = c.user_id
+            WHERE c.id = %s AND c.review_requested = 1
+            """,
+            (check_id,),
+        )
+    )
+    if row is None:
+        abort(404)
+    review = fetch_one(
+        "SELECT * FROM professional_reviews WHERE check_id = %s",
+        (check_id,),
+    )
+    if review and review["professional_id"] != g.user["id"]:
+        abort(404)
+    return row, review
+
+
+def save_review_field(check_id, field, text):
+    if field not in {"notes", "recommendation"}:
+        raise ValueError("Unexpected review field.")
+    _row, review = visible_submission(check_id)
+    if review is None:
+        notes = text if field == "notes" else None
+        recommendation = text if field == "recommendation" else None
+        execute(
+            """
+            INSERT INTO professional_reviews (check_id, professional_id, notes, recommendation)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (check_id, g.user["id"], notes, recommendation),
+        )
+        return
+    execute(
+        f"UPDATE professional_reviews SET {field} = %s WHERE check_id = %s AND professional_id = %s",
+        (text, check_id, g.user["id"]),
+    )
+
+
 @app.route("/reviews")
-@roles_required("professional", "admin")
+@roles_required("professional")
 def reviews():
     urgency = request.args.get("urgency", "")
     if urgency not in URGENCY_META:
         urgency = ""
     sql = """
-        SELECT c.*, u.full_name, u.username
+        SELECT c.*, u.full_name, u.username,
+               r.id AS review_id, r.notes AS review_notes, r.recommendation AS review_recommendation
         FROM symptom_checks c
         JOIN users u ON u.id = c.user_id
+        LEFT JOIN professional_reviews r ON r.check_id = c.id
+        WHERE c.review_requested = 1
+          AND (r.id IS NULL OR r.professional_id = %s)
     """
-    params = []
+    params = [g.user["id"]]
     if urgency:
-        sql += " WHERE c.urgency = %s"
+        sql += " AND c.urgency = %s"
         params.append(urgency)
-    sql += " ORDER BY c.created_at DESC LIMIT 200"
+    sql += " ORDER BY c.review_requested_at DESC, c.created_at DESC LIMIT 200"
     checks = [hydrate_check(row) for row in fetch_all(sql, params)]
     return render_template("reviews.html", checks=checks, urgency=urgency)
+
+
+@app.route("/reviews/history")
+@roles_required("professional")
+def review_history():
+    rows = []
+    for row in fetch_all(
+        """
+        SELECT c.*, u.full_name, u.username,
+               r.notes AS review_notes, r.recommendation AS review_recommendation,
+               r.updated_at AS reviewed_at
+        FROM professional_reviews r
+        JOIN symptom_checks c ON c.id = r.check_id
+        JOIN users u ON u.id = c.user_id
+        WHERE r.professional_id = %s
+        ORDER BY r.updated_at DESC
+        """,
+        (g.user["id"],),
+    ):
+        hydrated = hydrate_check(row)
+        rows.append(hydrated)
+    return render_template("review_history.html", checks=rows)
+
+
+@app.route("/reviews/<int:check_id>")
+@roles_required("professional")
+def review_detail(check_id):
+    row, review = visible_submission(check_id)
+    return render_template("review_detail.html", check=row, review=review, errors={})
+
+
+@app.route("/reviews/<int:check_id>/notes", methods=["POST"])
+@roles_required("professional")
+def review_notes(check_id):
+    visible_submission(check_id)
+    error, notes = validate_bounded_text(request.form.get("notes", ""), "Review notes", 10, 2000)
+    if error:
+        row, review = visible_submission(check_id)
+        draft = dict(review or {})
+        draft["notes"] = request.form.get("notes", "")
+        return render_template(
+            "review_detail.html",
+            check=row,
+            review=draft,
+            errors={"notes": error},
+        )
+    save_review_field(check_id, "notes", notes)
+    audit("review_notes", f"check {check_id}")
+    flash("Review notes saved.", "success")
+    return redirect(url_for("review_detail", check_id=check_id))
+
+
+@app.route("/reviews/<int:check_id>/recommendation", methods=["POST"])
+@roles_required("professional")
+def review_recommendation(check_id):
+    visible_submission(check_id)
+    error, text = validate_bounded_text(
+        request.form.get("recommendation", ""), "Follow-up recommendation", 10, 2000
+    )
+    if error:
+        row, review = visible_submission(check_id)
+        draft = dict(review or {})
+        draft["recommendation"] = request.form.get("recommendation", "")
+        return render_template(
+            "review_detail.html",
+            check=row,
+            review=draft,
+            errors={"recommendation": error},
+        )
+    save_review_field(check_id, "recommendation", text)
+    audit("follow_up", f"check {check_id}")
+    flash("Follow-up recommendation saved.", "success")
+    return redirect(url_for("review_detail", check_id=check_id))
 
 
 def _report_bundle():
@@ -651,7 +874,14 @@ def _report_bundle():
         ),
         "checks": int(fetch_one("SELECT COUNT(*) AS total FROM symptom_checks")["total"]),
         "plans": int(fetch_one("SELECT COUNT(*) AS total FROM lifestyle_plans")["total"]),
-        "messages": int(fetch_one("SELECT COUNT(*) AS total FROM messages")["total"]),
+        "review_requests": int(
+            fetch_one(
+                "SELECT COUNT(*) AS total FROM symptom_checks WHERE review_requested = 1"
+            )["total"]
+        ),
+        "reviews_done": int(
+            fetch_one("SELECT COUNT(*) AS total FROM professional_reviews")["total"]
+        ),
     }
     urgency_rows = fetch_all(
         "SELECT urgency, COUNT(*) AS total FROM symptom_checks GROUP BY urgency"
@@ -689,35 +919,30 @@ def _report_bundle():
     daily = []
     for offset in range(7):
         day = start + timedelta(days=offset)
-        daily.append({"label": day.strftime("%d %b"), "count": daily_map.get(str(day), 0)})
+        daily.append(
+            {
+                "label": day.strftime("%d %b"),
+                "day": day.isoformat(),
+                "count": daily_map.get(str(day), 0),
+            }
+        )
     day_peak = max((item["count"] for item in daily), default=1) or 1
     for item in daily:
         item["pct"] = int(round((item["count"] / day_peak) * 100))
-    recent = [
-        hydrate_check(row)
-        for row in fetch_all(
-            """
-            SELECT c.*, u.full_name, u.username
-            FROM symptom_checks c
-            JOIN users u ON u.id = c.user_id
-            ORDER BY c.created_at DESC
-            LIMIT 12
-            """
-        )
-    ]
-    return totals, urgency_stats, daily, recent
+    return totals, urgency_stats, daily
 
 
 @app.route("/admin")
 @roles_required("admin")
 def admin_home():
-    totals, urgency_stats, daily, recent = _report_bundle()
-    newest_users = fetch_all(
+    totals, urgency_stats, daily = _report_bundle()
+    activity = fetch_all(
         """
-        SELECT full_name, username, role, created_at
-        FROM users
-        ORDER BY created_at DESC
-        LIMIT 6
+        SELECT a.created_at, a.role, a.action, a.detail, u.username
+        FROM audit_logs a
+        LEFT JOIN users u ON u.id = a.user_id
+        ORDER BY a.created_at DESC
+        LIMIT 8
         """
     )
     return render_template(
@@ -725,8 +950,7 @@ def admin_home():
         totals=totals,
         urgency_stats=urgency_stats,
         daily=daily,
-        recent=recent,
-        newest_users=newest_users,
+        activity=activity,
         active="overview",
     )
 
@@ -764,32 +988,10 @@ def admin_users():
                     role,
                 ),
             )
+            audit("user_created", f"{cleaned['username']} {role}")
             flash("User account created.", "success")
             return redirect(url_for("admin_users"))
-    query = (request.args.get("q") or "").strip()[:50]
-    like = None
-    if query:
-        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        like = f"%{escaped}%"
-        users = fetch_all(
-            """
-            SELECT id, full_name, username, email, phone, role, is_active, created_at
-            FROM users
-            WHERE username LIKE %s ESCAPE '\\\\'
-               OR full_name LIKE %s ESCAPE '\\\\'
-               OR email LIKE %s ESCAPE '\\\\'
-            ORDER BY created_at DESC
-            """,
-            (like, like, like),
-        )
-    else:
-        users = fetch_all(
-            """
-            SELECT id, full_name, username, email, phone, role, is_active, created_at
-            FROM users
-            ORDER BY created_at DESC
-            """
-        )
+    users, query = list_accounts(request.args.get("q"))
     return render_template(
         "admin/users.html",
         users=users,
@@ -808,14 +1010,16 @@ def admin_set_role(user_id):
         abort(404)
     if target["username"].lower() == "admin":
         flash("The primary administrator role cannot be changed.", "error")
-        return redirect(url_for("admin_users"))
+        return redirect(url_for("admin_roles"))
     role = request.form.get("role", "")
     if role not in ("patient", "professional"):
         flash("Choose a valid role.", "error")
-        return redirect(url_for("admin_users"))
-    execute("UPDATE users SET role = %s WHERE id = %s", (role, user_id))
-    flash("Role updated.", "success")
-    return redirect(url_for("admin_users"))
+        return redirect(url_for("admin_roles"))
+    if role != target["role"]:
+        execute("UPDATE users SET role = %s WHERE id = %s", (role, user_id))
+        audit("role_changed", f"{target['username']} {target['role']} to {role}")
+        flash("Role updated.", "success")
+    return redirect(url_for("admin_roles"))
 
 
 @app.route("/admin/users/<int:user_id>/status", methods=["POST"])
@@ -829,6 +1033,7 @@ def admin_set_status(user_id):
         return redirect(url_for("admin_users"))
     new_status = 0 if target["is_active"] else 1
     execute("UPDATE users SET is_active = %s WHERE id = %s", (new_status, user_id))
+    audit("account_status", f"{target['username']} {'enabled' if new_status else 'disabled'}")
     flash("Account status updated.", "success")
     return redirect(url_for("admin_users"))
 
@@ -849,30 +1054,126 @@ def admin_reset_password(user_id):
         "UPDATE users SET password_hash = %s WHERE id = %s",
         (generate_password_hash(request.form.get("password", "")), user_id),
     )
+    audit("password_reset", target["username"])
     flash(f"Password updated for {target['username']}.", "success")
     return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/roles")
+@roles_required("admin")
+def admin_roles():
+    users, query = list_accounts(request.args.get("q"))
+    return render_template("admin/roles.html", users=users, query=query, active="roles")
+
+
+@app.route("/admin/guidance")
+@roles_required("admin")
+def admin_guidance():
+    blocks = fetch_all(
+        "SELECT slug, title, updated_at FROM content_blocks ORDER BY title"
+    )
+    return render_template("admin/guidance.html", blocks=blocks, active="guidance")
+
+
+@app.route("/admin/guidance/<slug>", methods=["GET", "POST"])
+@roles_required("admin")
+def admin_guidance_edit(slug):
+    if slug not in CONTENT_SLUGS:
+        abort(404)
+    block = content_block(slug)
+    if block is None:
+        abort(404)
+    errors = {}
+    if request.method == "POST":
+        title_error, title = validate_bounded_text(request.form.get("title", ""), "Title", 3, 120)
+        body_error, body = validate_bounded_text(request.form.get("body", ""), "Content", 20, 4000)
+        errors = {key: value for key, value in {"title": title_error, "body": body_error}.items() if value}
+        if not errors:
+            execute(
+                "UPDATE content_blocks SET title = %s, body = %s WHERE slug = %s",
+                (title, body, slug),
+            )
+            audit("guidance_updated", slug)
+            flash("Approved guidance content updated.", "success")
+            return redirect(url_for("admin_guidance"))
+        block = {"slug": slug, "title": request.form.get("title", ""), "body": request.form.get("body", "")}
+    return render_template("admin/guidance_edit.html", block=block, errors=errors, active="guidance")
+
+
+@app.route("/admin/audit")
+@roles_required("admin")
+def admin_audit():
+    entries = fetch_all(
+        """
+        SELECT a.created_at, a.role, a.action, a.detail, u.username
+        FROM audit_logs a
+        LEFT JOIN users u ON u.id = a.user_id
+        ORDER BY a.created_at DESC
+        LIMIT 300
+        """
+    )
+    return render_template("admin/audit.html", entries=entries, active="audit")
+
+
+@app.route("/admin/settings", methods=["GET", "POST"])
+@roles_required("admin")
+def admin_settings():
+    errors = {}
+    current = dict(g.settings)
+    if request.method == "POST":
+        registration = "1" if request.form.get("registration_open") == "1" else "0"
+        reviews = "1" if request.form.get("reviews_open") == "1" else "0"
+        ambulance_error, ambulance = validate_emergency_number(
+            request.form.get("emergency_ambulance", ""), "Ambulance number"
+        )
+        general_error, general = validate_emergency_number(
+            request.form.get("emergency_general", ""), "Emergency number"
+        )
+        errors = {
+            key: value
+            for key, value in {
+                "emergency_ambulance": ambulance_error,
+                "emergency_general": general_error,
+            }.items()
+            if value
+        }
+        current = {
+            "registration_open": registration,
+            "reviews_open": reviews,
+            "emergency_ambulance": request.form.get("emergency_ambulance", ""),
+            "emergency_general": request.form.get("emergency_general", ""),
+        }
+        if not errors:
+            for key, value in (
+                ("registration_open", registration),
+                ("reviews_open", reviews),
+                ("emergency_ambulance", ambulance),
+                ("emergency_general", general),
+            ):
+                execute(
+                    """
+                    INSERT INTO app_settings (setting_key, setting_value)
+                    VALUES (%s, %s)
+                    ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+                    """,
+                    (key, value),
+                )
+            g.settings = load_settings()
+            audit("settings_updated", "registration, reviews, emergency numbers")
+            flash("System settings saved.", "success")
+            return redirect(url_for("admin_settings"))
+    return render_template("admin/settings.html", settings=current, errors=errors, active="settings")
 
 
 @app.route("/admin/reports")
 @roles_required("admin")
 def admin_reports():
-    totals, urgency_stats, daily, recent = _report_bundle()
-    plans = fetch_all(
-        """
-        SELECT p.id, p.headline, p.created_at, u.full_name, u.username
-        FROM lifestyle_plans p
-        JOIN users u ON u.id = p.user_id
-        ORDER BY p.created_at DESC
-        LIMIT 12
-        """
-    )
+    totals, urgency_stats, daily = _report_bundle()
     return render_template(
         "admin/reports.html",
         totals=totals,
         urgency_stats=urgency_stats,
         daily=daily,
-        recent=recent,
-        plans=plans,
         active="reports",
     )
 
@@ -880,48 +1181,22 @@ def admin_reports():
 @app.route("/admin/reports.csv")
 @roles_required("admin")
 def admin_reports_csv():
-    rows = fetch_all(
-        """
-        SELECT c.created_at, u.full_name, u.username, c.urgency, c.title, c.summary, c.notes
-        FROM symptom_checks c
-        JOIN users u ON u.id = c.user_id
-        ORDER BY c.created_at DESC
-        """
-    )
+    totals, urgency_stats, daily = _report_bundle()
     buffer = StringIO()
     writer = csv.writer(buffer)
-    writer.writerow(["created_at", "full_name", "username", "urgency", "title", "summary", "notes"])
-    for row in rows:
-        writer.writerow(
-            [
-                row["created_at"].strftime("%Y-%m-%d %H:%M") if row["created_at"] else "",
-                row["full_name"],
-                row["username"],
-                row["urgency"],
-                row["title"],
-                row["summary"],
-                row["notes"] or "",
-            ]
-        )
+    writer.writerow(["metric", "key", "value"])
+    for key, value in totals.items():
+        writer.writerow(["total", key, value])
+    for row in urgency_stats:
+        writer.writerow(["urgency", row["key"], row["count"]])
+    for item in daily:
+        writer.writerow(["checks_on_day", item["day"], item["count"]])
+    audit("report_downloaded", "usage csv")
     return Response(
         buffer.getvalue(),
         mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=symptom-checks.csv"},
+        headers={"Content-Disposition": "attachment; filename=usage-report.csv"},
     )
-
-
-@app.route("/admin/messages")
-@roles_required("admin")
-def admin_messages():
-    messages = fetch_all("SELECT * FROM messages ORDER BY created_at DESC")
-    return render_template("admin/messages.html", messages=messages, active="messages")
-
-
-@app.route("/admin/messages/<int:message_id>/read", methods=["POST"])
-@roles_required("admin")
-def admin_message_read(message_id):
-    execute("UPDATE messages SET is_read = 1 WHERE id = %s", (message_id,))
-    return redirect(url_for("admin_messages"))
 
 
 @app.errorhandler(400)

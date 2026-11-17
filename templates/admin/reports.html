@@ -1,21 +1,21 @@
 {% extends "base.html" %}
-{% from "macros.html" import urgency with context %}
 {% block title %}Reports{% endblock %}
 {% block content %}
 <header class="page-head">
   <p class="kicker">Administrator</p>
-  <h1>Reports</h1>
-  <p class="lede">A snapshot of accounts, symptom checks, and lifestyle plans on this server.</p>
+  <h1>Usage and system reports</h1>
+  <p class="lede">Counts only. This report does not include symptom summaries, notes, or contact details.</p>
 </header>
 {% include "partials/subnav.html" %}
 <div class="action-row">
-  <a class="btn btn-primary" href="{{ url_for('admin_reports_csv') }}">Download symptom checks (CSV)</a>
+  <a class="btn btn-primary" href="{{ url_for('admin_reports_csv') }}">Download usage report (CSV)</a>
 </div>
 <section class="stat-grid">
   <article class="stat"><span>People</span><strong>{{ totals.users }}</strong></article>
   <article class="stat"><span>Symptom checks</span><strong>{{ totals.checks }}</strong></article>
   <article class="stat"><span>Lifestyle plans</span><strong>{{ totals.plans }}</strong></article>
-  <article class="stat"><span>Messages</span><strong>{{ totals.messages }}</strong></article>
+  <article class="stat"><span>Review requests</span><strong>{{ totals.review_requests }}</strong></article>
+  <article class="stat"><span>Reviews written</span><strong>{{ totals.reviews_done }}</strong></article>
 </section>
 <div class="two-col">
   <section class="card">
@@ -39,51 +39,4 @@
     {% endfor %}
   </section>
 </div>
-<section>
-  <h2>Recent symptom checks</h2>
-  {% if recent %}
-  <div class="table-wrap card">
-    <table>
-      <thead>
-        <tr><th>When</th><th>Person</th><th>Level</th><th>Title</th></tr>
-      </thead>
-      <tbody>
-        {% for check in recent %}
-        <tr>
-          <td>{{ check.created_at | when }}</td>
-          <td>{{ check.full_name }}</td>
-          <td>{{ urgency(check.urgency) }}</td>
-          <td><a href="{{ url_for('check_detail', check_id=check.id) }}">{{ check.title }}</a></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  <p class="empty">No symptom checks yet.</p>
-  {% endif %}
-</section>
-<section>
-  <h2>Recent lifestyle plans</h2>
-  {% if plans %}
-  <div class="table-wrap card">
-    <table>
-      <thead>
-        <tr><th>When</th><th>Person</th><th>Plan</th></tr>
-      </thead>
-      <tbody>
-        {% for plan in plans %}
-        <tr>
-          <td>{{ plan.created_at | when }}</td>
-          <td>{{ plan.full_name }}</td>
-          <td><a href="{{ url_for('lifestyle_detail', plan_id=plan.id) }}">{{ plan.headline }}</a></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  <p class="empty">No lifestyle plans yet.</p>
-  {% endif %}
-</section>
 {% endblock %}

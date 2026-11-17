@@ -160,16 +160,27 @@ def _has_term(text, terms):
     return any(term in text for term in terms)
 
 
-def evaluate_symptoms(symptom_ids, duration, severity, age_group, pregnancy, notes):
+def evaluate_symptoms(
+    symptom_ids,
+    duration,
+    severity,
+    age_group,
+    pregnancy,
+    notes,
+    ambulance="912",
+    general="112",
+):
     chosen = set(symptom_ids)
     text = (notes or "").lower()
     labels = [SYMPTOM_LABELS[item] for item in symptom_ids if item in SYMPTOM_LABELS]
+    ambulance = ambulance or "912"
+    general = general or "112"
 
     if _has_term(text, CRISIS_TERMS):
         guidance = {
             "associations": [],
             "steps": [
-                "Call 112 (emergency) or 912 (ambulance) now.",
+                f"Call {general} (emergency) or {ambulance} (ambulance) now.",
                 "Go to the nearest emergency department if you can do that safely.",
                 "Tell someone you trust, and stay with another person if possible.",
                 "This application cannot provide crisis counseling or emergency treatment.",
@@ -272,12 +283,12 @@ def evaluate_symptoms(symptom_ids, duration, severity, age_group, pregnancy, not
         )
     if "chest" in chosen:
         warnings.append(
-            "If chest pain spreads to the arm, jaw, or back, or you feel sweaty, sick, or short of breath, call 912."
+            f"If chest pain spreads to the arm, jaw, or back, or you feel sweaty, sick, or short of breath, call {ambulance}."
         )
 
-    steps = _steps(urgency) + extra_steps
+    steps = _steps(urgency, ambulance, general) + extra_steps
     lifestyle = [] if urgency == "emergency" else _illness_lifestyle(chosen)
-    title, summary = _headline(urgency, chosen)
+    title, summary = _headline(urgency, chosen, ambulance)
 
     guidance = {
         "associations": associations[:3],
@@ -367,11 +378,12 @@ def _associations(chosen):
     return found
 
 
-def _headline(urgency, chosen):
+def _headline(urgency, chosen, ambulance="912"):
     if urgency == "emergency":
         return (
             "Seek emergency care now",
-            "This combination can be a medical emergency. This tool cannot tell you the cause. Call 912 or go to the nearest emergency department.",
+            "This combination can be a medical emergency. This tool cannot tell you the cause. "
+            f"Call {ambulance} or go to the nearest emergency department.",
         )
     if urgency == "urgent":
         return (
@@ -394,17 +406,17 @@ def _headline(urgency, chosen):
     )
 
 
-def _steps(urgency):
+def _steps(urgency, ambulance="912", general="112"):
     if urgency == "emergency":
         return [
-            "Call 912 for an ambulance or 112 for emergency help.",
+            f"Call {ambulance} for an ambulance or {general} for emergency help.",
             "Do not drive yourself if you feel faint, confused, or short of breath.",
             "Tell the clinician every symptom you selected, including when it started.",
         ]
     if urgency == "urgent":
         return [
             "Arrange same-day care at a hospital outpatient clinic, emergency unit, or another clinician.",
-            "If breathing, pain, or alertness gets worse while you wait, call 912.",
+            f"If breathing, pain, or alertness gets worse while you wait, call {ambulance}.",
             "Take a list of the symptoms and any medicines you already use.",
         ]
     if urgency == "soon":

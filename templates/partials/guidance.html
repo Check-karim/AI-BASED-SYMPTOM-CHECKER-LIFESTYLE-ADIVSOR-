@@ -1,0 +1,58 @@
+{% from "macros.html" import urgency with context %}
+<dl class="meta-row">
+  <div><dt>Symptoms</dt><dd>{{ check.guidance.symptom_labels | join(', ') or 'None listed' }}</dd></div>
+  <div><dt>Duration</dt><dd>{{ check.guidance.duration_label }}</dd></div>
+  <div><dt>Severity</dt><dd>{{ check.guidance.severity_label }}</dd></div>
+  <div><dt>Age group</dt><dd>{{ check.guidance.age_label }}</dd></div>
+</dl>
+{% if check.notes %}
+<section class="card">
+  <h2>Notes with the check</h2>
+  <p class="notes">{{ check.notes }}</p>
+</section>
+{% endif %}
+{% if check.guidance.warnings %}
+<section class="watch">
+  <h2>Watch for</h2>
+  <ul>
+    {% for item in check.guidance.warnings %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% if check.guidance.associations %}
+<section>
+  <h2>What this can be associated with</h2>
+  <div class="card-grid">
+    {% for item in check.guidance.associations %}
+    <article class="card">
+      <h3>{{ item.title }}</h3>
+      <p>{{ item.detail }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+<section class="card">
+  <h2>What to do next</h2>
+  <ol class="plain-list">
+    {% for step in check.guidance.steps %}
+    <li>{{ step }}</li>
+    {% endfor %}
+  </ol>
+</section>
+{% if check.guidance.lifestyle %}
+<section class="card">
+  <h2>While you wait</h2>
+  <ul class="plain-list">
+    {% for tip in check.guidance.lifestyle %}
+    <li>{{ tip }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+<p class="disclaimer-strip">
+  <strong>Not a diagnosis.</strong>
+  <span>A clinician who can examine you is the right person to decide on care. Call {{ emergency_ambulance }} for an ambulance or {{ emergency_general }} for emergency help.</span>
+</p>

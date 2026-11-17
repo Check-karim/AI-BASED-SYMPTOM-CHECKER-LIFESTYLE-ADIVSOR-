@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf, urgency with context %}
+{% block title %}Symptom summary{% endblock %}
+{% block content %}
+<article class="result">
+  <header class="page-head">
+    <p class="kicker">Consented submission · {{ check.created_at | when }}</p>
+    <div class="title-row">
+      <h1>{{ check.title }}</h1>
+      {{ urgency(check.urgency) }}
+    </div>
+    <p class="lede">{{ check.summary }}</p>
+    <p class="hint">Submitted by {{ check.full_name }} ({{ check.username }}). This person asked for a review.</p>
+  </header>
+  {% include "partials/guidance.html" %}
+  <div class="two-col">
+    <form class="card form-grid" method="post" action="{{ url_for('review_notes', check_id=check.id) }}">
+      <h2>Add review notes</h2>
+      {{ csrf() }}
+      <label class="field" for="notes">
+        <span>Notes</span>
+        <textarea id="notes" name="notes" rows="6" minlength="10" maxlength="2000" required>{{ review.notes if review and review.notes else '' }}</textarea>
+        <small class="hint">What you observed in this summary. At least 10 characters.</small>
+        {% if errors.get('notes') %}<small class="field-error">{{ errors.get('notes') }}</small>{% endif %}
+      </label>
+      <button class="btn btn-primary" type="submit">Save notes</button>
+    </form>
+    <form class="card form-grid" method="post" action="{{ url_for('review_recommendation', check_id=check.id) }}">
+      <h2>Provide follow-up recommendation</h2>
+      {{ csrf() }}
+      <label class="field" for="recommendation">
+        <span>Recommendation</span>
+        <textarea id="recommendation" name="recommendation" rows="6" minlength="10" maxlength="2000" required>{{ review.recommendation if review and review.recommendation else '' }}</textarea>
+        <small class="hint">The next step you want this person to see. At least 10 characters. This is not a diagnosis.</small>
+        {% if errors.get('recommendation') %}<small class="field-error">{{ errors.get('recommendation') }}</small>{% endif %}
+      </label>
+      <button class="btn btn-primary" type="submit">Save recommendation</button>
+    </form>
+  </div>
+  <div class="action-row">
+    <a class="btn btn-ghost" href="{{ url_for('reviews') }}">Assigned submissions</a>
+    <a class="btn btn-ghost" href="{{ url_for('review_history') }}">Review history</a>
+  </div>
+</article>
+{% endblock %}

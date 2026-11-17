@@ -7,6 +7,10 @@
   <h1>Create a patient account</h1>
   <p class="lede">Staff accounts are issued by the administrator. This form is for people using the checker.</p>
 </header>
+{% if closed %}
+<p class="empty">Registration is closed. An administrator can open it again from system settings, or create an account for you.</p>
+<p><a class="btn btn-primary" href="{{ url_for('login') }}">Sign in</a></p>
+{% else %}
 <div class="auth-layout">
   <form class="card form-grid" method="post" action="{{ url_for('register') }}" data-rules="account" novalidate>
     {{ csrf() }}
@@ -35,4 +39,5 @@
     <p class="hint">Already registered? <a href="{{ url_for('login') }}">Sign in</a>.</p>
   </aside>
 </div>
+{% endif %}
 {% endblock %}

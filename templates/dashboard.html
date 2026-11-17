@@ -15,16 +15,10 @@
 <div class="action-row">
   <a class="btn btn-primary" href="{{ url_for('checker') }}">New symptom check</a>
   <a class="btn btn-ghost" href="{{ url_for('lifestyle') }}">New lifestyle plan</a>
-  <a class="btn btn-ghost" href="{{ url_for('history') }}">Full history</a>
+  <a class="btn btn-ghost" href="{{ url_for('history') }}">Symptom history</a>
   <a class="btn btn-ghost" href="{{ url_for('profile') }}">Edit profile</a>
+  <a class="btn btn-ghost" href="{{ url_for('disclaimer') }}">Safety notice</a>
 </div>
-{% if g.user.role == 'professional' %}
-<section class="card staff-banner">
-  <h2>Staff review</h2>
-  <p>{{ review_count }} symptom check{{ '' if review_count == 1 else 's' }} are available to authorized reviewers.</p>
-  <a class="btn btn-primary" href="{{ url_for('reviews') }}">Open reviews</a>
-</section>
-{% endif %}
 <div class="two-col">
   <section>
     <h2>Recent checks</h2>
@@ -35,7 +29,7 @@
           <a href="{{ url_for('check_detail', check_id=check.id) }}">
             {{ urgency(check.urgency) }}
             <strong>{{ check.title }}</strong>
-            <span>{{ check.created_at | when }}</span>
+            <span>{{ check.created_at | when }}{% if check.review_requested %} · Review requested{% endif %}</span>
           </a>
         </li>
         {% endfor %}

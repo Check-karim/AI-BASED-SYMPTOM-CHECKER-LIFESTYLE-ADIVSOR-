@@ -5,7 +5,7 @@ import re
 from werkzeug.security import check_password_hash
 
 from app import app
-from db import execute, fetch_one, init_db
+from db import execute, fetch_all, fetch_one, init_db
 
 
 def token(html):
@@ -17,9 +17,11 @@ def token(html):
 def main():
     init_db()
     with app.app_context():
-        execute("DELETE FROM users WHERE username = %s", ("alineuwase",))
+        execute("DELETE FROM users WHERE username IN (%s, %s)", ("alineuwase", "revpro"))
     client = app.test_client()
-    pages = ["/", "/about", "/services", "/disclaimer", "/contact", "/login", "/register"]
+    for path in ("/about", "/services", "/contact", "/admin/messages"):
+        assert client.get(path).status_code == 404, path
+    pages = ["/", "/disclaimer", "/login", "/register"]
     for path in pages:
         response = client.get(path)
         assert response.status_code == 200, path
@@ -110,6 +112,27 @@ def main():
     assert plan.status_code == 200
     assert b"sleep" in plan.data.lower()
 
+    with app.app_context():
+        patient = fetch_one("SELECT id FROM users WHERE username = %s", ("alineuwase",))
+        own_checks = [
+            row["id"]
+            for row in fetch_all(
+                "SELECT id FROM symptom_checks WHERE user_id = %s ORDER BY id",
+                (patient["id"],),
+            )
+        ]
+    assert len(own_checks) >= 2
+    private_id, shared_id = own_checks[0], own_checks[1]
+    detail = client.get(f"/checks/{shared_id}")
+    requested = client.post(
+        f"/checks/{shared_id}/review-request",
+        data={"csrf_token": token(detail.data.decode())},
+        follow_redirects=True,
+    )
+    assert b"asked for a professional review" in requested.data
+    for blocked in ("/reviews", "/admin", "/admin/users", "/admin/reports"):
+        assert client.get(blocked).status_code == 403, blocked
+
     client.post("/logout", data={"csrf_token": token(client.get("/dashboard").data.decode())})
 
     login = client.get("/login")
@@ -120,9 +143,18 @@ def main():
     )
     assert admin.status_code == 200
     assert b"Desk" in admin.data
-    for path in ("/admin/users", "/admin/reports", "/admin/messages", "/reviews"):
+    for path in (
+        "/admin/users",
+        "/admin/roles",
+        "/admin/guidance",
+        "/admin/audit",
+        "/admin/reports",
+        "/admin/settings",
+    ):
         response = client.get(path)
         assert response.status_code == 200, path
+    for path in ("/checker", "/lifestyle", "/profile", "/history", "/dashboard", "/reviews", f"/checks/{shared_id}"):
+        assert client.get(path).status_code == 403, path
 
     short = client.post(
         "/admin/users",
@@ -140,12 +172,65 @@ def main():
     )
     assert b"at least 6" in short.data
 
+    made = client.post(
+        "/admin/users",
+        data={
+            "csrf_token": token(client.get("/admin/users").data.decode()),
+            "full_name": "Review Pro",
+            "username": "revpro",
+            "email": "revpro@example.com",
+            "phone": "0731112233",
+            "password": "secret1",
+            "confirm_password": "secret1",
+            "role": "professional",
+        },
+        follow_redirects=True,
+    )
+    assert b"User account created" in made.data
+    client.post("/logout", data={"csrf_token": token(client.get("/admin").data.decode())})
+
+    professional = client.post(
+        "/login",
+        data={
+            "csrf_token": token(client.get("/login").data.decode()),
+            "username": "revpro",
+            "password": "secret1",
+        },
+        follow_redirects=True,
+    )
+    assert professional.status_code == 200
+    assert b"Assigned and consented" in professional.data
+    assert client.get(f"/reviews/{private_id}").status_code == 404
+    opened = client.get(f"/reviews/{shared_id}")
+    assert opened.status_code == 200
+    noted = client.post(
+        f"/reviews/{shared_id}/notes",
+        data={
+            "csrf_token": token(opened.data.decode()),
+            "notes": "Summary reviewed. No extra detail beyond the submitted symptoms.",
+        },
+        follow_redirects=True,
+    )
+    assert b"Review notes saved" in noted.data
+    followed = client.post(
+        f"/reviews/{shared_id}/recommendation",
+        data={
+            "csrf_token": token(noted.data.decode()),
+            "recommendation": "Arrange an in-person exam today and do not wait on this application.",
+        },
+        follow_redirects=True,
+    )
+    assert b"Follow-up recommendation saved" in followed.data
+    history = client.get("/reviews/history")
+    assert b"Summary reviewed" in history.data
+    for path in ("/checker", "/lifestyle", "/dashboard", "/admin", "/profile"):
+        assert client.get(path).status_code == 403, path
+
     with app.app_context():
         stored = fetch_one("SELECT phone, password_hash FROM users WHERE username = %s", ("admin",))
         assert stored["phone"] == "+250780000000"
         assert check_password_hash(stored["password_hash"], "admin")
-        user = fetch_one("SELECT id FROM users WHERE username = %s", ("alineuwase",))
-        execute("DELETE FROM users WHERE id = %s", (user["id"],))
+        execute("DELETE FROM users WHERE username IN (%s, %s)", ("alineuwase", "revpro"))
     print("smoke ok")
 
 

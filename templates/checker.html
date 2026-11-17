@@ -5,7 +5,13 @@
 <header class="page-head">
   <p class="kicker">Symptom checker</p>
   <h1>Tell us what you are feeling</h1>
-  <p class="lede">Select every symptom that applies today. The result is general guidance from safety rules, not a diagnosis and not a look at your hospital record.</p>
+  {% if intro %}
+    {% for paragraph in intro.body.split('\n\n') %}
+      {% if paragraph.strip() %}<p class="lede preserve">{{ paragraph.strip() }}</p>{% endif %}
+    {% endfor %}
+  {% else %}
+    <p class="lede">Select every symptom that applies today. The result is general guidance from safety rules, not a diagnosis and not a look at your hospital record.</p>
+  {% endif %}
 </header>
 <form class="checker-form" method="post" action="{{ url_for('checker') }}" data-rules="symptoms">
   {{ csrf() }}

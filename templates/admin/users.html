@@ -4,8 +4,8 @@
 {% block content %}
 <header class="page-head">
   <p class="kicker">Administrator</p>
-  <h1>User information</h1>
-  <p class="lede">Create patient and professional accounts, change a role, or disable an account. The primary administrator stays active.</p>
+  <h1>User accounts</h1>
+  <p class="lede">Create a patient or healthcare professional, disable an account, or set a new password. Change what they can open from Roles.</p>
 </header>
 {% include "partials/subnav.html" %}
 <div class="two-col">
@@ -66,20 +66,7 @@
           <span class="hint">{{ user.username }} · {{ user.created_at | when }}</span>
         </td>
         <td>{{ user.email }}<br><span class="hint">{{ user.phone }}</span></td>
-        <td>
-          {% if user.username == 'admin' %}
-            <span class="pill pill-self">Administrator</span>
-          {% else %}
-          <form method="post" action="{{ url_for('admin_set_role', user_id=user.id) }}" class="stack-form">
-            {{ csrf() }}
-            <select name="role" aria-label="Role for {{ user.username }}">
-              <option value="patient" {% if user.role == 'patient' %}selected{% endif %}>Patient</option>
-              <option value="professional" {% if user.role == 'professional' %}selected{% endif %}>Professional</option>
-            </select>
-            <button class="btn btn-ghost btn-small" type="submit">Save role</button>
-          </form>
-          {% endif %}
-        </td>
+        <td>{{ role_labels.get(user.role, user.role) }}</td>
         <td>
           {% if user.username == 'admin' %}
             <span class="pill pill-self">Active</span>

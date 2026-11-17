@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf with context %}
+{% block title %}Edit guidance{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">Approved content</p>
+  <h1>{{ block.title }}</h1>
+  <p class="lede">Patients see this text. Leave a blank line between paragraphs.</p>
+</header>
+{% include "partials/subnav.html" %}
+<form class="card form-grid narrow" method="post" action="{{ url_for('admin_guidance_edit', slug=block.slug) }}">
+  {{ csrf() }}
+  {% if errors %}<p class="form-banner" role="alert">Please correct the highlighted fields.</p>{% endif %}
+  <label class="field" for="title">
+    <span>Title</span>
+    <input id="title" name="title" value="{{ block.title }}" minlength="3" maxlength="120" required>
+    {% if errors.get('title') %}<small class="field-error">{{ errors.get('title') }}</small>{% endif %}
+  </label>
+  <label class="field" for="body">
+    <span>Content</span>
+    <textarea id="body" name="body" rows="12" minlength="20" maxlength="4000" required>{{ block.body }}</textarea>
+    {% if errors.get('body') %}<small class="field-error">{{ errors.get('body') }}</small>{% endif %}
+  </label>
+  <div class="action-row">
+    <button class="btn btn-primary" type="submit">Save content</button>
+    <a class="btn btn-ghost" href="{{ url_for('admin_guidance') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

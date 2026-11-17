@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Guidance content{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">Administrator</p>
+  <h1>Approved guidance content</h1>
+  <p class="lede">These are the notices and introductions patients read. The care-level rules that flag an emergency stay fixed, so a wording change cannot turn them off.</p>
+</header>
+{% include "partials/subnav.html" %}
+<div class="table-wrap card">
+  <table>
+    <thead>
+      <tr><th>Notice</th><th>Updated</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for block in blocks %}
+      <tr>
+        <td><strong>{{ block.title }}</strong><br><span class="hint">{{ block.slug }}</span></td>
+        <td>{{ block.updated_at | when }}</td>
+        <td><a href="{{ url_for('admin_guidance_edit', slug=block.slug) }}">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

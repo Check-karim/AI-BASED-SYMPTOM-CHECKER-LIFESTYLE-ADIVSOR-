@@ -1,11 +1,10 @@
 {% extends "base.html" %}
-{% from "macros.html" import urgency with context %}
 {% block title %}Administrator{% endblock %}
 {% block content %}
 <header class="page-head">
   <p class="kicker">Administrator</p>
   <h1>Desk</h1>
-  <p class="lede">You are signed in as the predefined administrator. Patient passwords set from this desk must be at least 6 characters.</p>
+  <p class="lede">Accounts, roles, approved notices, the audit log, usage reports, and system settings. Symptom summaries stay with the patient and the professional they asked to review.</p>
 </header>
 {% include "partials/subnav.html" %}
 <section class="stat-grid">
@@ -14,7 +13,7 @@
   <article class="stat"><span>Professionals</span><strong>{{ totals.professionals }}</strong></article>
   <article class="stat"><span>Symptom checks</span><strong>{{ totals.checks }}</strong></article>
   <article class="stat"><span>Lifestyle plans</span><strong>{{ totals.plans }}</strong></article>
-  <article class="stat"><span>Messages</span><strong>{{ totals.messages }}</strong></article>
+  <article class="stat"><span>Review requests</span><strong>{{ totals.review_requests }}</strong></article>
 </section>
 <div class="two-col">
   <section class="card">
@@ -38,38 +37,29 @@
     {% endfor %}
   </section>
 </div>
-<div class="two-col">
-  <section>
-    <h2>Newest accounts</h2>
-    <ul class="record-list">
-      {% for user in newest_users %}
-      <li>
-        <div>
-          <strong>{{ user.full_name }}</strong>
-          <span>{{ user.username }} · {{ user.role }}</span>
-          <span>{{ user.created_at | when }}</span>
-        </div>
-      </li>
-      {% endfor %}
-    </ul>
-  </section>
-  <section>
-    <h2>Latest checks</h2>
-    {% if recent %}
-    <ul class="record-list">
-      {% for check in recent %}
-      <li>
-        <a href="{{ url_for('check_detail', check_id=check.id) }}">
-          {{ urgency(check.urgency) }}
-          <strong>{{ check.full_name }}</strong>
-          <span>{{ check.title }}</span>
-        </a>
-      </li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <p class="empty">No symptom checks have been saved yet.</p>
-    {% endif %}
-  </section>
-</div>
+<section>
+  <h2>Recent activity</h2>
+  {% if activity %}
+  <div class="table-wrap card">
+    <table>
+      <thead>
+        <tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        {% for entry in activity %}
+        <tr>
+          <td>{{ entry.created_at | when }}</td>
+          <td>{{ entry.username or 'Unknown' }}<br><span class="hint">{{ role_labels.get(entry.role, entry.role) }}</span></td>
+          <td>{{ entry.action }}</td>
+          <td>{{ entry.detail }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">No activity has been recorded yet.</p>
+  {% endif %}
+  <p><a class="text-link" href="{{ url_for('admin_audit') }}">Open the full audit log</a></p>
+</section>
 {% endblock %}

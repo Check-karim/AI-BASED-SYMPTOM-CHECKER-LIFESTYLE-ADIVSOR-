@@ -30,26 +30,31 @@
       </a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
       <nav id="site-nav" class="nav-links" aria-label="Primary">
-        <a href="{{ url_for('home') }}">Home</a>
-        <a href="{{ url_for('about') }}">About</a>
-        <a href="{{ url_for('services') }}">Services</a>
-        <a href="{{ url_for('contact') }}">Contact</a>
-        {% if g.user %}
+        {% if g.user and g.user.role == 'patient' %}
+          <a href="{{ url_for('dashboard') }}">My record</a>
           <a href="{{ url_for('checker') }}">Check</a>
           <a href="{{ url_for('lifestyle') }}">Lifestyle</a>
-          {% if g.user.role == 'admin' %}
-            <a href="{{ url_for('admin_home') }}">Desk{% if unread_messages %} <span class="count">{{ unread_messages }}</span>{% endif %}</a>
-          {% elif g.user.role == 'professional' %}
-            <a href="{{ url_for('reviews') }}">Reviews</a>
+          <a href="{{ url_for('history') }}">History</a>
+          <a href="{{ url_for('profile') }}">Profile</a>
+          <a href="{{ url_for('disclaimer') }}">Safety notice</a>
+        {% elif g.user and g.user.role == 'professional' %}
+          <a href="{{ url_for('reviews') }}">Assigned reviews</a>
+          <a href="{{ url_for('review_history') }}">Review history</a>
+        {% elif g.user and g.user.role == 'admin' %}
+          <a href="{{ url_for('admin_home') }}">Desk</a>
+        {% else %}
+          <a href="{{ url_for('home') }}">Home</a>
+          <a href="{{ url_for('disclaimer') }}">Safety notice</a>
+          <a href="{{ url_for('login') }}">Sign in</a>
+          {% if registration_open %}
+            <a class="btn btn-primary btn-small" href="{{ url_for('register') }}">Create account</a>
           {% endif %}
-          <a href="{{ url_for('dashboard') }}">My record</a>
+        {% endif %}
+        {% if g.user %}
           <form method="post" action="{{ url_for('logout') }}" class="inline-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="btn btn-ghost btn-small">Sign out</button>
           </form>
-        {% else %}
-          <a href="{{ url_for('login') }}">Sign in</a>
-          <a class="btn btn-primary btn-small" href="{{ url_for('register') }}">Create account</a>
         {% endif %}
       </nav>
     </div>
@@ -76,13 +81,10 @@
       </div>
       <div>
         <span class="footer-label">In an emergency</span>
-        <p>Call <strong>912</strong> for an ambulance or <strong>112</strong> for emergency help.</p>
+        <p>Call <strong>{{ emergency_ambulance }}</strong> for an ambulance or <strong>{{ emergency_general }}</strong> for emergency help.</p>
       </div>
       <div class="footer-links">
-        <a href="{{ url_for('disclaimer') }}">Disclaimer</a>
-        <a href="{{ url_for('about') }}">About the case study</a>
-        <a href="{{ url_for('services') }}">Services</a>
-        <a href="{{ url_for('contact') }}">Contact</a>
+        <a href="{{ url_for('disclaimer') }}">Safety notice and disclaimer</a>
       </div>
     </div>
     <div class="wrap footer-base">

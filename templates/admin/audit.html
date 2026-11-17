@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+<header class="page-head">
+  <p class="kicker">Administrator</p>
+  <h1>System activity and audit log</h1>
+  <p class="lede">Sign-ins and changes. Passwords and symptom text are not stored in this log.</p>
+</header>
+{% include "partials/subnav.html" %}
+{% if entries %}
+<div class="table-wrap card">
+  <table>
+    <thead>
+      <tr><th>When</th><th>Who</th><th>Role</th><th>Action</th><th>Detail</th></tr>
+    </thead>
+    <tbody>
+      {% for entry in entries %}
+      <tr>
+        <td>{{ entry.created_at | when }}</td>
+        <td>{{ entry.username or 'Unknown' }}</td>
+        <td>{{ role_labels.get(entry.role, entry.role) }}</td>
+        <td>{{ entry.action }}</td>
+        <td>{{ entry.detail }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="empty">No activity has been recorded yet.</p>
+{% endif %}
+{% endblock %}

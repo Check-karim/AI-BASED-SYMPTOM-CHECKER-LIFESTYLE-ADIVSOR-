@@ -1,6 +1,14 @@
 # AI-Based Symptom Checker & Lifestyle Advisor
 
-Case-study web app set at King Faisal Hospital Rwanda. It stores accounts, symptom checks, lifestyle plans, and contact messages in MySQL. Guidance comes from written safety rules. It is not a diagnosis and not the hospital’s live system.
+Case-study web app set at King Faisal Hospital Rwanda. It stores accounts, symptom checks, lifestyle plans, and professional reviews in MySQL. Guidance comes from written safety rules. It is not a diagnosis and not the hospital’s live system.
+
+## Who can do what
+
+A patient can register, sign in, manage their profile, enter symptoms, read preliminary guidance, receive lifestyle recommendations, view symptom history, optionally request a professional review, and read the safety notice.
+
+A healthcare professional can sign in, open only the checks a patient asked them to review, read the symptom summary, add review notes, send a follow-up recommendation, and view their review history.
+
+An administrator can sign in, manage accounts, change roles, edit the approved notices patients read, view the audit log, generate usage reports, and configure registration, review requests, and emergency numbers.
 
 ## Run
 

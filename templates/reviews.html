@@ -1,42 +1,55 @@
 {% extends "base.html" %}
 {% from "macros.html" import urgency with context %}
-{% block title %}Reviews{% endblock %}
+{% block title %}Assigned reviews{% endblock %}
 {% block content %}
 <header class="page-head">
-  <p class="kicker">Staff review</p>
-  <h1>Symptom checks</h1>
-  <p class="lede">Authorized healthcare professionals and the administrator can read what people submitted. This is not the hospital’s clinical record.</p>
+  <p class="kicker">Healthcare professional</p>
+  <h1>Assigned and consented submissions</h1>
+  <p class="lede">These are symptom checks a patient asked a professional to review. Saving notes or a follow-up assigns that check to you. Checks that were not sent stay private.</p>
 </header>
 <nav class="filter-row" aria-label="Filter by care level">
   <a href="{{ url_for('reviews') }}" {% if not urgency %}aria-current="page"{% endif %}>All</a>
   {% for key, meta in urgency_meta.items() %}
     <a href="{{ url_for('reviews', urgency=key) }}" {% if urgency == key %}aria-current="page"{% endif %}>{{ meta.label }}</a>
   {% endfor %}
+  <a href="{{ url_for('review_history') }}">Review history</a>
 </nav>
 {% if checks %}
 <div class="table-wrap card">
   <table>
     <thead>
       <tr>
-        <th>When</th>
+        <th>Requested</th>
         <th>Person</th>
         <th>Care level</th>
-        <th>Guidance</th>
+        <th>Summary</th>
+        <th>Your review</th>
       </tr>
     </thead>
     <tbody>
       {% for check in checks %}
       <tr>
-        <td>{{ check.created_at | when }}</td>
+        <td>{{ (check.review_requested_at or check.created_at) | when }}</td>
         <td>{{ check.full_name }}<br><span class="hint">{{ check.username }}</span></td>
         <td>{{ urgency(check.urgency) }}</td>
-        <td><a href="{{ url_for('check_detail', check_id=check.id) }}">{{ check.title }}</a></td>
+        <td><a href="{{ url_for('review_detail', check_id=check.id) }}">{{ check.title }}</a></td>
+        <td>
+          {% if check.review_notes and check.review_recommendation %}
+            Complete
+          {% elif check.review_notes %}
+            Notes added
+          {% elif check.review_recommendation %}
+            Recommendation added
+          {% else %}
+            Waiting
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
 {% else %}
-<p class="empty">No symptom checks in this view yet.</p>
+<p class="empty">No consented submissions are waiting for you.</p>
 {% endif %}
 {% endblock %}

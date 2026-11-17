@@ -7,9 +7,6 @@
     <h1>{{ plan.headline }}</h1>
     <p class="lede">{{ plan.advice.intro }}</p>
   </header>
-  {% if g.user.role == 'admin' and plan.user_id != g.user.id %}
-    <p class="hint">Prepared for {{ plan.full_name }} ({{ plan.username }}).</p>
-  {% endif %}
   <dl class="meta-row">
     <div><dt>Focus</dt><dd>{{ plan.advice.goal_label }}</dd></div>
     <div><dt>Activity</dt><dd>{{ plan.advice.activity_label }}</dd></div>

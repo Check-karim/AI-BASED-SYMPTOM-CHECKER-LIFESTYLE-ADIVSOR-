@@ -101,6 +101,22 @@ def validate_subject(raw):
     return "", subject
 
 
+def validate_bounded_text(raw, label, minimum, maximum):
+    text = (raw or "").strip()
+    if len(text) < minimum:
+        return f"{label} must be at least {minimum} characters.", ""
+    if len(text) > maximum:
+        return f"{label} must be {maximum} characters or fewer.", ""
+    return "", text
+
+
+def validate_emergency_number(raw, label):
+    number = (raw or "").strip()
+    if not number.isdigit() or not 2 <= len(number) <= 6:
+        return f"{label} must be 2 to 6 digits.", ""
+    return "", number
+
+
 def validate_message_body(raw):
     body = (raw or "").strip()
     if len(body) < 10:
